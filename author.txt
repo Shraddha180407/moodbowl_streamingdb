@@ -1,0 +1,14 @@
+Demo login: user1@moodbite.demo / demo1234
+Admin: python manage.py createsuperuser
+
+# 1. Install & setup (or just run setup.sh)
+pip install -r requirements.txt
+python manage.py migrate; python manage.py seed_data;
+
+# 2. Start
+python manage.py runserver
+
+# 3. Open
+# Frontend:  http://localhost:8000/app/
+# Dashboard: http://localhost:8000/dashboard/
+# Login:     user1@moodbite.demo / demo1234

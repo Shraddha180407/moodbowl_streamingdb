@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoodBowl — Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap');
+:root{
+  --bg:#09090f;--surface:#111119;--card:#15151e;--border:#1f1f30;
+  --accent:#f97316;--p2:#a855f7;--p3:#22d3ee;
+  --text:#eaeaf5;--muted:#606078;
+  --green:#4ade80;--red:#f87171;--yellow:#fbbf24;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(249,115,22,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(249,115,22,.025) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+.wrap{display:flex;min-height:100vh;position:relative;z-index:1;}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:100;}
+.logo{padding:22px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.logo-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),var(--p2));border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.logo-name{font-family:'Syne',sans-serif;font-weight:800;font-size:17px;background:linear-gradient(135deg,var(--accent),var(--p2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.logo-sub{font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:1px;}
+nav{flex:1;padding:14px 10px;overflow-y:auto;}
+.nav-section{margin-bottom:22px;}
+.nav-label{font-size:9.5px;color:var(--muted);letter-spacing:1.8px;text-transform:uppercase;padding:0 8px;margin-bottom:6px;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:500;transition:all .18s;margin-bottom:1px;border:1px solid transparent;user-select:none;}
+.nav-item:hover{background:var(--card);color:var(--text);}
+.nav-item.active{background:rgba(249,115,22,.12);color:var(--accent);border-color:rgba(249,115,22,.22);}
+.nav-icon{font-size:14px;width:16px;text-align:center;}
+.sidebar-foot{padding:14px;border-top:1px solid var(--border);}
+.live-pill{display:flex;align-items:center;gap:8px;padding:9px 12px;background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.18);border-radius:8px;font-size:12px;color:var(--green);}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.4s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh;}
+.topbar{padding:18px 28px;border-bottom:1px solid var(--border);background:rgba(9,9,15,.85);backdrop-filter:blur(20px);position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;}
+.page-title{font-family:'Syne',sans-serif;font-weight:700;font-size:19px;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.topbar-brand{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;border-right:1px solid var(--border);padding-right:12px;margin-right:2px;}
+.actions{display:flex;gap:8px;}
+.btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans';font-size:13px;font-weight:500;transition:all .18s;}
+.btn-ghost{background:var(--card);color:var(--muted);border:1px solid var(--border);}
+.btn-ghost:hover{color:var(--text);border-color:var(--muted);}
+.btn-sim{background:linear-gradient(135deg,var(--accent),#ea580c);color:#fff;}
+.btn-sim:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(249,115,22,.35);}
+.btn-sim:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+.content{padding:28px;flex:1;}
+.tab-panel{display:none;}.tab-panel.active{display:block;}
+/* stat cards */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.sc{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:18px;position:relative;overflow:hidden;transition:border-color .2s;}
+.sc:hover{border-color:var(--muted);}
+.sc::after{content:'';position:absolute;top:0;right:0;width:70px;height:70px;border-radius:50%;opacity:.07;transform:translate(20px,-20px);}
+.sc.or::after{background:var(--accent);}.sc.pu::after{background:var(--p2);}.sc.cy::after{background:var(--p3);}.sc.gr::after{background:var(--green);}
+.sc-icon{font-size:19px;margin-bottom:10px;}
+.sc-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;margin-bottom:5px;}
+.sc-val{font-family:'Syne',sans-serif;font-size:24px;font-weight:700;}
+.sc-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+/* chart cards */
+.g2{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;}
+.g2e{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.cc{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:20px;}
+.cc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}
+.cc-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;}
+.cc-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.badge{font-size:10px;padding:2px 8px;border-radius:20px;background:rgba(249,115,22,.1);color:var(--accent);border:1px solid rgba(249,115,22,.2);}
+.badge-blue{font-size:10px;padding:2px 8px;border-radius:20px;background:rgba(34,211,238,.1);color:var(--p3);border:1px solid rgba(34,211,238,.2);}
+.badge-pu{font-size:10px;padding:2px 8px;border-radius:20px;background:rgba(168,85,247,.1);color:var(--p2);border:1px solid rgba(168,85,247,.2);}
+/* mood grid */
+.mood-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;}
+.mood-cell{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;transition:all .2s;}
+.mood-cell:hover,.mood-cell.sel{border-color:var(--accent);background:rgba(249,115,22,.07);transform:translateY(-2px);}
+.mc-emoji{font-size:22px;margin-bottom:4px;}
+.mc-name{font-size:10px;font-weight:600;}
+.mc-count{font-size:9px;color:var(--muted);margin-top:2px;}
+.mc-bar{height:3px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden;}
+.mc-fill{height:100%;border-radius:2px;transition:width .7s ease;}
+/* food map */
+.food-map{overflow-x:auto;}
+.food-map table{width:100%;border-collapse:collapse;font-size:12px;}
+.food-map th{padding:7px 10px;text-align:left;color:var(--muted);font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.9px;border-bottom:1px solid var(--border);}
+.food-map td{padding:8px 10px;border-bottom:1px solid rgba(31,31,48,.5);}
+.food-map tr:hover td{background:rgba(255,255,255,.015);}
+.hc{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:600;min-width:28px;text-align:center;}
+/* orders mood table */
+.mood-orders-wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.mood-orders-card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:18px;}
+.mood-orders-card h3{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:4px;}
+.mood-orders-card p{font-size:11px;color:var(--muted);margin-bottom:14px;}
+.mood-tab-head{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+.mood-tab-btn{padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:11px;cursor:pointer;transition:all .15s;}
+.mood-tab-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(249,115,22,.1);}
+.mini-order-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(31,31,48,.4);font-size:12px;}
+.mini-order-row:last-child{border-bottom:none;}
+.mini-order-num{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;}
+.mini-tags{display:flex;gap:4px;flex-wrap:wrap;}
+.mini-tag{font-size:10px;padding:1px 6px;border-radius:10px;}
+/* stream */
+.stream-box{background:var(--surface);border:1px solid var(--border);border-radius:13px;overflow:hidden;}
+.stream-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.stream-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.stream-body{height:360px;overflow-y:auto;}
+.stream-body::-webkit-scrollbar{width:3px;}
+.stream-body::-webkit-scrollbar-thumb{background:var(--border);}
+.ev{display:flex;align-items:center;gap:11px;padding:11px 18px;border-bottom:1px solid rgba(31,31,48,.4);animation:slip .25s ease;font-size:12px;}
+@keyframes slip{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+.ev-icon{font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:7px;flex-shrink:0;}
+.ev-icon.rt{background:rgba(249,115,22,.1);}.ev-icon.or{background:rgba(74,222,128,.1);}.ev-icon.se{background:rgba(168,85,247,.1);}.ev-icon.hb{background:rgba(34,211,238,.1);}
+.ev-body{flex:1;}.ev-title{font-weight:500;}.ev-meta{color:var(--muted);font-size:10.5px;margin-top:1px;}
+.ev-time{color:var(--muted);font-size:10px;flex-shrink:0;}
+/* orders table */
+.ot{width:100%;border-collapse:collapse;font-size:13px;}
+.ot th{padding:9px 13px;text-align:left;color:var(--muted);font-weight:500;font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;border-bottom:1px solid var(--border);}
+.ot td{padding:11px 13px;border-bottom:1px solid rgba(31,31,48,.4);}
+.ot tr:hover td{background:rgba(255,255,255,.012);}
+.sb{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:500;}
+.sb.delivered{background:rgba(74,222,128,.1);color:var(--green);}
+.sb.placed{background:rgba(251,191,36,.1);color:var(--yellow);}
+.sb.preparing{background:rgba(168,85,247,.1);color:var(--p2);}
+.sb.cancelled{background:rgba(248,113,113,.1);color:var(--red);}
+.sb.confirmed{background:rgba(34,211,238,.1);color:var(--p3);}
+.sb.out_for_delivery{background:rgba(249,115,22,.1);color:var(--accent);}
+.mood-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:12px;background:rgba(168,85,247,.1);color:var(--p2);font-size:11px;}
+.mood-tag-rec{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:12px;background:rgba(34,211,238,.1);color:var(--p3);font-size:11px;}
+/* ML */
+.ml-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px;}
+.ml-sc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;}
+.ml-val{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;color:var(--accent);}
+.ml-lbl{font-size:11px;color:var(--muted);margin-top:3px;}
+.pr{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:12px;}
+.pr-lbl{width:110px;color:var(--muted);}
+.pr-bar{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.pr-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--p2));transition:width .7s ease;}
+.pr-val{width:28px;text-align:right;font-weight:500;}
+/* top items */
+.ir{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid rgba(31,31,48,.4);}
+.ir-rank{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--border);width:26px;}
+.ir-rank.gold{color:var(--yellow);}
+.ir-info{flex:1;}.ir-name{font-size:13px;font-weight:500;}.ir-cat{font-size:11px;color:var(--muted);margin-top:1px;}
+.ir-bar{height:4px;background:var(--border);border-radius:2px;margin-top:5px;overflow:hidden;}
+.ir-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--p2));border-radius:2px;}
+.ir-cnt{font-size:12px;color:var(--muted);width:52px;text-align:right;}
+/* rating */
+.rat-row{display:flex;gap:30px;padding:14px 0;}
+.rat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
+.rat-num{font-family:'Syne',sans-serif;font-size:46px;font-weight:800;line-height:1;}
+.rat-stars{display:flex;gap:2px;margin-top:4px;}
+.star{font-size:14px;}
+/* misc */
+.loading{display:flex;align-items:center;justify-content:center;height:180px;color:var(--muted);flex-direction:column;gap:10px;}
+.spin{width:30px;height:30px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .75s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err-box{background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);border-radius:10px;padding:16px;color:var(--red);font-size:13px;display:none;margin-bottom:14px;}
+.notif{position:fixed;bottom:22px;right:22px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px 17px;font-size:13px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);transform:translateY(80px);opacity:0;transition:all .3s ease;z-index:999;max-width:310px;}
+.notif.show{transform:translateY(0);opacity:1;}
+@media(max-width:1200px){.stats-grid,.g3{grid-template-columns:1fr 1fr}.g2{grid-template-columns:1fr}.mood-grid{grid-template-columns:repeat(4,1fr)}.mood-orders-wrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">🍜</div>
+    <div>
+      <div class="logo-name">MoodBowl</div>
+      <div class="logo-sub">Analytics</div>
+    </div>
+  </div>
+  <nav>
+    <div class="nav-section">
+      <div class="nav-label">Overview</div>
+      <div class="nav-item active" onclick="go('overview',this)"><span class="nav-icon">📊</span>Dashboard</div>
+      <div class="nav-item" onclick="go('mood',this)"><span class="nav-icon">😊</span>Mood Analytics</div>
+      <div class="nav-item" onclick="go('orders',this)"><span class="nav-icon">🛒</span>Orders</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Intelligence</div>
+      <div class="nav-item" onclick="go('stream',this)"><span class="nav-icon">⚡</span>Live Stream</div>
+      <div class="nav-item" onclick="go('ml',this)"><span class="nav-icon">🤖</span>ML Model</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Menu</div>
+      <div class="nav-item" onclick="go('menu',this)"><span class="nav-icon">🍜</span>Top Items</div>
+    </div>
+  </nav>
+  <div class="sidebar-foot">
+    <div class="live-pill"><div class="dot"></div><span id="live-txt">Connecting…</span></div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div class="page-title" id="page-title">Dashboard Overview</div>
+    <div class="topbar-right">
+      <span class="topbar-brand">MoodBowl Analytics</span>
+      <div class="actions">
+        <button class="btn btn-ghost" onclick="loadData()">↺ Refresh</button>
+        <button class="btn btn-sim" id="sim-btn" onclick="simulate()">⚡ Simulate Order</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="err-box" id="err-box">⚠️ <span id="err-msg"></span></div>
+
+    <!-- OVERVIEW -->
+    <div class="tab-panel active" id="tab-overview">
+      <div class="stats-grid" id="stats-grid">
+        <div class="sc or"><div class="loading"><div class="spin"></div>Loading…</div></div>
+        <div class="sc gr"><div class="loading"></div></div>
+        <div class="sc pu"><div class="loading"></div></div>
+        <div class="sc cy"><div class="loading"></div></div>
+      </div>
+      <div class="g2">
+        <div class="cc">
+          <div class="cc-head"><div><div class="cc-title">Orders &amp; Revenue — 30 Days</div><div class="cc-sub">Daily order volume and delivered revenue</div></div><span class="badge">TREND</span></div>
+          <canvas id="c-timeline" height="90"></canvas>
+        </div>
+        <div class="cc">
+          <div class="cc-head"><div><div class="cc-title">Order Status</div><div class="cc-sub">Current distribution</div></div></div>
+          <canvas id="c-status" height="140"></canvas>
+        </div>
+      </div>
+      <div class="g3">
+        <div class="cc"><div class="cc-head"><div><div class="cc-title">Cuisine Popularity</div><div class="cc-sub">Orders by cuisine</div></div></div><canvas id="c-cuisine" height="160"></canvas></div>
+        <div class="cc"><div class="cc-head"><div><div class="cc-title">Payment Methods</div><div class="cc-sub">How users pay</div></div></div><canvas id="c-payment" height="160"></canvas></div>
+        <div class="cc"><div class="cc-head"><div><div class="cc-title">Hourly Orders</div><div class="cc-sub">Today's ordering pattern</div></div></div><canvas id="c-hourly" height="160"></canvas></div>
+      </div>
+    </div>
+
+    <!-- MOOD ANALYTICS -->
+    <div class="tab-panel" id="tab-mood">
+      <div class="cc" style="margin-bottom:14px">
+        <div class="cc-head">
+          <div>
+            <div class="cc-title">Mood Distribution</div>
+            <div class="cc-sub">Compare <strong style="color:var(--accent)">mood orders were placed under</strong> vs <strong style="color:var(--p3)">mood filter used to recommend</strong></div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <span class="badge" id="mood-view-ordered" onclick="setMoodView('ordered')" style="cursor:pointer">Ordered Under</span>
+            <span class="badge-blue" id="mood-view-recommended" onclick="setMoodView('recommended')" style="cursor:pointer;opacity:.5">Recommended</span>
+          </div>
+        </div>
+        <div class="mood-grid" id="mood-grid"></div>
+      </div>
+
+      <div class="g2e">
+        <div class="cc">
+          <div class="cc-head">
+            <div><div class="cc-title">Mood → Food Category</div><div class="cc-sub">Click a mood card above to filter</div></div>
+          </div>
+          <div class="food-map" id="food-map">
+            <div class="loading"><div style="color:var(--muted)">Select a mood above</div></div>
+          </div>
+        </div>
+        <div class="cc">
+          <div class="cc-head"><div><div class="cc-title">Mood Order Volume</div><div class="cc-sub" id="mood-vol-sub">Orders placed under each mood</div></div></div>
+          <canvas id="c-mood" height="200"></canvas>
+        </div>
+      </div>
+
+      <div class="mood-orders-wrap" id="mood-orders-wrap">
+        <div class="mood-orders-card" id="ordered-under-card">
+          <h3>📋 Orders by Mood Ordered Under</h3>
+          <p>The emotional state the user was in when they placed the order</p>
+          <div class="mood-tab-head" id="ordered-tabs"></div>
+          <div id="ordered-orders-list"></div>
+        </div>
+        <div class="mood-orders-card" id="recommended-card">
+          <h3>🎯 Orders by Mood Recommended From</h3>
+          <p>The mood filter used by the AI to recommend these food items</p>
+          <div class="mood-tab-head" id="recommended-tabs"></div>
+          <div id="recommended-orders-list"></div>
+        </div>
+      </div>
+
+      <div class="cc"><div class="cc-head"><div><div class="cc-title">Category Distribution</div><div class="cc-sub">Most ordered food categories overall</div></div></div><canvas id="c-cat" height="70"></canvas></div>
+    </div>
+
+    <!-- ORDERS -->
+    <div class="tab-panel" id="tab-orders">
+      <div class="cc" style="margin-bottom:14px">
+        <div class="cc-head">
+          <div><div class="cc-title">Recent Orders</div><div class="cc-sub">Latest 10 orders — showing mood ordered under &amp; mood recommended from</div></div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="ot">
+            <thead>
+              <tr>
+                <th>#</th><th>Order</th><th>Status</th><th>Items</th>
+                <th>Mood (ordered under)</th><th>Mood (recommended)</th>
+                <th>Payment</th><th>Total</th><th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="orders-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="g2e">
+        <div class="cc"><div class="cc-head"><div><div class="cc-title">Ratings</div><div class="cc-sub">Average scores from user feedback</div></div></div><div id="ratings-box"></div></div>
+        <div class="cc"><div class="cc-head"><div><div class="cc-title">Revenue — Last 14 Days</div><div class="cc-sub">Delivered order revenue</div></div></div><canvas id="c-rev" height="160"></canvas></div>
+      </div>
+    </div>
+
+    <!-- STREAM -->
+    <div class="tab-panel" id="tab-stream">
+      <div class="g2e" style="margin-bottom:14px">
+        <div class="sc or"><div class="sc-icon">⚡</div><div class="sc-label">Stream Events</div><div class="sc-val" id="ev-count">0</div><div class="sc-sub">Since connected</div></div>
+        <div class="sc pu"><div class="sc-icon">🤖</div><div class="sc-label">Model Updates</div><div class="sc-val" id="ml-count">0</div><div class="sc-sub">Training samples</div></div>
+      </div>
+      <div class="stream-box">
+        <div class="stream-head">
+          <div class="stream-title"><div class="dot"></div>Live Event Stream — MoodBowl</div>
+          <button class="btn btn-ghost" onclick="clearStream()">Clear</button>
+        </div>
+        <div class="stream-body" id="stream-body">
+          <div class="loading"><div class="spin"></div><span>Waiting for events…</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ML MODEL -->
+    <div class="tab-panel" id="tab-ml">
+      <div class="ml-grid" id="ml-stats-grid"></div>
+      <div class="g2e" style="margin-bottom:14px">
+        <div class="cc">
+          <div class="cc-head"><div><div class="cc-title">Feedback per Mood</div><div class="cc-sub">Training samples driving the MoodBowl model</div></div><span class="badge">STREAMING</span></div>
+          <div id="ml-bars"></div>
+        </div>
+        <div class="cc">
+          <div class="cc-head"><div><div class="cc-title">Items Learned per Mood</div><div class="cc-sub">Breadth of learned preferences</div></div></div>
+          <canvas id="c-ml" height="180"></canvas>
+        </div>
+      </div>
+      <div class="cc">
+        <div class="cc-head"><div><div class="cc-title">How MoodBowl's Streaming Model Works</div></div></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:4px">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center"><div style="font-size:26px;margin-bottom:8px">🎤</div><div style="font-size:12px;font-weight:600;margin-bottom:4px">1. Voice / Text</div><div style="font-size:11px;color:var(--muted)">User speaks their mood. NLP extracts primary mood + preferences.</div></div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center"><div style="font-size:26px;margin-bottom:8px">🧠</div><div style="font-size:12px;font-weight:600;margin-bottom:4px">2. Cold Start</div><div style="font-size:11px;color:var(--muted)">Synthetic affinity matrix: 14 moods × categories & cuisines.</div></div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center"><div style="font-size:26px;margin-bottom:8px">⭐</div><div style="font-size:12px;font-weight:600;margin-bottom:4px">3. Rating Feedback</div><div style="font-size:11px;color:var(--muted)">Post-meal ratings trigger EMA: score = 0.88×old + 0.12×new</div></div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center"><div style="font-size:26px;margin-bottom:8px">📈</div><div style="font-size:12px;font-weight:600;margin-bottom:4px">4. Smarter Recs</div><div style="font-size:11px;color:var(--muted)">Learned weight reaches 75% at 15+ samples. Model saves to disk.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MENU -->
+    <div class="tab-panel" id="tab-menu">
+      <div class="cc"><div class="cc-head"><div><div class="cc-title">Top 10 Items by Orders</div><div class="cc-sub">Most popular dishes across all moods on MoodBowl</div></div></div><div id="top-items"></div></div>
+    </div>
+
+  </div>
+</main>
+</div>
+
+<div class="notif" id="notif">
+  <span id="n-icon" style="font-size:18px"></span>
+  <div><div id="n-title" style="font-weight:600"></div><div id="n-sub" style="font-size:11px;color:var(--muted);margin-top:2px"></div></div>
+</div>
+
+<script>
+const EMOJI={happy:'😊',sad:'😢',stressed:'😰',tired:'😴',excited:'🤩',anxious:'😟',romantic:'❤️',energetic:'💪',bored:'😑',celebratory:'🎉',soothing:'🧘',healthy:'🥗',indulgent:'🍫',focused:'🎯'};
+const MCOLOR={happy:'#FFD700',sad:'#4169E1',stressed:'#FF6347',tired:'#9370DB',excited:'#FF69B4',anxious:'#20B2AA',romantic:'#DC143C',energetic:'#32CD32',bored:'#808080',celebratory:'#FFA500',soothing:'#87CEEB',healthy:'#90EE90',indulgent:'#D2691E',focused:'#9F79EE'};
+const GD={color:'#eaeaf5',grid:{color:'#1f1f30',drawBorder:false},ticks:{color:'#606078',font:{family:'DM Sans',size:10}}};
+
+let D=null, charts={}, evCount=0, sse=null, moodView='ordered', selectedMood=null;
+
+const TITLES={overview:'Dashboard Overview',mood:'Mood Analytics',orders:'Orders',stream:'Live Event Stream',ml:'ML Model',menu:'Top Items'};
+function go(tab,el){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('page-title').textContent=TITLES[tab]||tab;
+  if(tab==='stream'&&!sse) connectSSE();
+}
+
+async function loadData(){
+  hideErr();
+  try{
+    const r=await fetch('/dashboard/stats/');
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const j=await r.json();
+    if(!j.success) throw new Error('API error');
+    D=j.data;
+    renderAll();
+    notify('✅','MoodBowl data loaded',`${D.overview.total_orders} orders · ${D.overview.total_users} users`);
+  }catch(e){
+    showErr('Could not load MoodBowl dashboard data: '+e.message+'. Make sure Django is running.');
+    console.error(e);
+  }
+}
+
+function showErr(m){document.getElementById('err-msg').textContent=m;document.getElementById('err-box').style.display='block';}
+function hideErr(){document.getElementById('err-box').style.display='none';}
+
+function renderAll(){
+  renderStats();renderTimeline();renderStatus();renderCuisine();renderPayment();renderHourly();
+  renderMoodGrid();renderMoodOrders();renderMoodChart();renderCatChart();renderFoodMap();
+  renderOrders();renderRatings();renderRevenue();
+  renderMLStats();renderTopItems();
+}
+
+function renderStats(){
+  const o=D.overview;
+  document.getElementById('stats-grid').innerHTML=[
+    {cls:'or',icon:'🛒',label:'Total Orders',val:o.total_orders.toLocaleString(),sub:`${o.today_orders} today · ${o.week_orders} this week`},
+    {cls:'gr',icon:'💰',label:'Revenue',val:`₹${Math.round(o.total_revenue).toLocaleString()}`,sub:'Delivered orders'},
+    {cls:'pu',icon:'👥',label:'Users',val:o.total_users.toLocaleString(),sub:`${o.voice_sessions_week} voice sessions / week`},
+    {cls:'cy',icon:'⭐',label:'Avg Rating',val:o.avg_rating.toFixed(1),sub:`${o.ml_updates} ML training samples`},
+  ].map(c=>`<div class="sc ${c.cls}"><div class="sc-icon">${c.icon}</div><div class="sc-label">${c.label}</div><div class="sc-val">${c.val}</div><div class="sc-sub">${c.sub}</div></div>`).join('');
+}
+
+function mk(id,cfg){
+  if(charts[id]) charts[id].destroy();
+  const el=document.getElementById(id);
+  if(!el) return;
+  charts[id]=new Chart(el,cfg);
+}
+
+function renderTimeline(){
+  const d=D.orders_timeline;
+  mk('c-timeline',{type:'bar',data:{labels:d.map(x=>x.date),datasets:[
+    {label:'Orders',data:d.map(x=>x.orders),backgroundColor:'rgba(249,115,22,.65)',borderColor:'#f97316',borderWidth:1,borderRadius:3,yAxisID:'y'},
+    {label:'Revenue ₹',data:d.map(x=>x.revenue),type:'line',borderColor:'#a855f7',backgroundColor:'rgba(168,85,247,.1)',borderWidth:2,pointRadius:0,tension:.4,fill:true,yAxisID:'y1'},
+  ]},options:{responsive:true,interaction:{mode:'index'},plugins:{legend:{labels:{color:'#606078',font:{family:'DM Sans',size:11}}}},scales:{x:{grid:GD.grid,ticks:{...GD.ticks,maxTicksLimit:10}},y:{grid:GD.grid,ticks:GD.ticks},y1:{grid:{display:false},ticks:GD.ticks,position:'right'}}}});
+}
+
+function renderStatus(){
+  const d=D.orders_by_status;
+  const labels=Object.keys(d);
+  const cols={delivered:'#4ade80',placed:'#fbbf24',preparing:'#a855f7',cancelled:'#f87171',confirmed:'#22d3ee',out_for_delivery:'#f97316'};
+  mk('c-status',{type:'doughnut',data:{labels,datasets:[{data:Object.values(d),backgroundColor:labels.map(l=>cols[l]||'#606078'),borderColor:'#15151e',borderWidth:3,hoverOffset:5}]},options:{plugins:{legend:{position:'bottom',labels:{color:'#606078',font:{family:'DM Sans',size:11},padding:8,boxWidth:11}}},cutout:'63%'}});
+}
+
+function renderCuisine(){
+  const d=D.cuisine_distribution;
+  mk('c-cuisine',{type:'bar',data:{labels:d.map(x=>x.cuisine),datasets:[{label:'Orders',data:d.map(x=>x.count),backgroundColor:d.map((_,i)=>`hsl(${i*42+18},75%,60%)`),borderRadius:4,borderSkipped:false}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:GD.grid,ticks:GD.ticks},y:{grid:{display:false},ticks:GD.ticks}}}});
+}
+
+function renderPayment(){
+  const d=D.payment_distribution;
+  const lbl={cod:'Cash on Delivery',upi:'UPI',card:'Card',online:'Online'};
+  mk('c-payment',{type:'pie',data:{labels:Object.keys(d).map(k=>lbl[k]||k),datasets:[{data:Object.values(d),backgroundColor:['#f97316','#a855f7','#22d3ee','#4ade80'],borderColor:'#15151e',borderWidth:3}]},options:{plugins:{legend:{position:'bottom',labels:{color:'#606078',font:{family:'DM Sans',size:11},padding:8,boxWidth:11}}}}});
+}
+
+function renderHourly(){
+  const d=D.hourly_orders;
+  mk('c-hourly',{type:'bar',data:{labels:d.map(x=>x.hour),datasets:[{label:'Orders',data:d.map(x=>x.orders),backgroundColor:d.map(x=>x.orders>0?'rgba(249,115,22,.7)':'rgba(31,31,48,.5)'),borderRadius:3}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:GD.grid,ticks:{...GD.ticks,maxTicksLimit:8}},y:{grid:GD.grid,ticks:GD.ticks}}}});
+}
+
+function setMoodView(view){
+  moodView=view;
+  document.getElementById('mood-view-ordered').style.opacity=view==='ordered'?'1':'0.5';
+  document.getElementById('mood-view-recommended').style.opacity=view==='recommended'?'1':'0.5';
+  document.getElementById('mood-vol-sub').textContent=view==='ordered'?'Orders placed under each mood':'Orders recommended from each mood';
+  renderMoodGrid();renderMoodChart();
+}
+
+function renderMoodGrid(){
+  const d=moodView==='ordered'?D.mood_distribution_ordered:D.mood_distribution_recommended;
+  const total=Object.values(d).reduce((a,b)=>a+b,0)||1;
+  const max=Math.max(...Object.values(d),1);
+  document.getElementById('mood-grid').innerHTML=Object.entries(d).sort((a,b)=>b[1]-a[1]).map(([m,c])=>`
+    <div class="mood-cell${selectedMood===m?' sel':''}" onclick="selectMood('${m}',this)">
+      <div class="mc-emoji">${EMOJI[m]||'🍜'}</div>
+      <div class="mc-name">${m}</div>
+      <div class="mc-count">${c} (${Math.round(c/total*100)}%)</div>
+      <div class="mc-bar"><div class="mc-fill" style="width:${Math.round(c/max*100)}%;background:${MCOLOR[m]||'#f97316'}"></div></div>
+    </div>`).join('');
+}
+
+function selectMood(mood,el){
+  selectedMood=mood;
+  document.querySelectorAll('.mood-cell').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  renderFoodMap(mood);
+}
+
+function renderFoodMap(mood){
+  if(!mood){
+    document.getElementById('food-map').innerHTML='<div class="loading"><div style="color:var(--muted)">Click a mood card to see food mapping</div></div>';
+    return;
+  }
+  const d=D.mood_food_mapping[mood]||{};
+  const sorted=Object.entries(d).sort((a,b)=>b[1]-a[1]);
+  const max=Math.max(...Object.values(d),1);
+  document.getElementById('food-map').innerHTML=sorted.length?`
+    <div style="margin-bottom:8px;font-size:12px;color:var(--muted)">${EMOJI[mood]||''} <strong style="color:var(--text)">${mood}</strong> mood → food categories ordered</div>
+    <div>${sorted.map(([c,v])=>`<div class="pr"><div class="pr-lbl">${c.replace(/_/g,' ')}</div><div class="pr-bar"><div class="pr-fill" style="width:${Math.round(v/max*100)}%;background:${MCOLOR[mood]||'#f97316'}"></div></div><div class="pr-val">${v}</div></div>`).join('')}</div>`
+    :'<p style="color:var(--muted);padding:16px;font-size:12px">No order data for this mood yet.</p>';
+}
+
+function renderMoodChart(){
+  const d=moodView==='ordered'?D.mood_distribution_ordered:D.mood_distribution_recommended;
+  const s=Object.entries(d).sort((a,b)=>b[1]-a[1]);
+  mk('c-mood',{type:'bar',data:{labels:s.map(([m])=>`${EMOJI[m]||''} ${m}`),datasets:[{label:'Orders',data:s.map(([,v])=>v),backgroundColor:s.map(([m])=>MCOLOR[m]||'#f97316'),borderRadius:5,borderSkipped:false}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:GD.ticks},y:{grid:GD.grid,ticks:GD.ticks}}}});
+}
+
+function renderCatChart(){
+  const d=D.category_distribution;
+  mk('c-cat',{type:'bar',data:{labels:d.map(x=>x.category.replace(/_/g,' ')),datasets:[{label:'Orders',data:d.map(x=>x.count),backgroundColor:'rgba(34,211,238,.7)',borderColor:'#22d3ee',borderWidth:1,borderRadius:4}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:GD.ticks},y:{grid:GD.grid,ticks:GD.ticks}}}});
+}
+
+let selOrderedMood=null,selRecommendedMood=null;
+
+function renderMoodOrders(){
+  const details=D.mood_order_details||{};
+  const moods=Object.keys(details);
+  if(!moods.length) return;
+  const orderedTabsEl=document.getElementById('ordered-tabs');
+  orderedTabsEl.innerHTML=moods.map(m=>`<button class="mood-tab-btn${(!selOrderedMood&&m===moods[0])||selOrderedMood===m?' active':''}" onclick="selectOrderedMood('${m}',this)">${EMOJI[m]||''} ${m}</button>`).join('');
+  if(!selOrderedMood) selOrderedMood=moods[0];
+  renderOrderedList(selOrderedMood);
+  const recMap={};
+  for(const o of(D.recent_orders||[])){
+    const rm=o.recommended_mood||o.ordered_under_mood||'';
+    if(rm){recMap[rm]=recMap[rm]||[];if(recMap[rm].length<5)recMap[rm].push(o);}
+  }
+  const recMoods=Object.keys(recMap);
+  document.getElementById('recommended-tabs').innerHTML=recMoods.map(m=>`<button class="mood-tab-btn${(!selRecommendedMood&&m===recMoods[0])||selRecommendedMood===m?' active':''}" onclick="selectRecommendedMood('${m}',this)">${EMOJI[m]||''} ${m}</button>`).join('');
+  if(!selRecommendedMood&&recMoods.length) selRecommendedMood=recMoods[0];
+  if(selRecommendedMood) renderRecommendedList(selRecommendedMood,recMap);
+  window._recMap=recMap;
+}
+
+function selectOrderedMood(mood,btn){
+  selOrderedMood=mood;
+  document.getElementById('ordered-tabs').querySelectorAll('.mood-tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderOrderedList(mood);
+}
+
+function selectRecommendedMood(mood,btn){
+  selRecommendedMood=mood;
+  document.getElementById('recommended-tabs').querySelectorAll('.mood-tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRecommendedList(mood,window._recMap||{});
+}
+
+function renderOrderedList(mood){
+  const orders=(D.mood_order_details||{})[mood]||[];
+  document.getElementById('ordered-orders-list').innerHTML=orders.length?
+    orders.map(o=>`<div class="mini-order-row">
+      <div><div class="mini-order-num">${o.order_number}</div><div style="font-size:10px;color:var(--muted);margin-top:2px">${new Date(o.created_at).toLocaleDateString('en-IN')}</div></div>
+      <div class="mini-tags">
+        <span class="mini-tag" style="background:rgba(168,85,247,.1);color:var(--p2)">${EMOJI[o.ordered_under_mood]||''} ${o.ordered_under_mood}</span>
+        <span class="mini-tag" style="background:rgba(34,211,238,.1);color:var(--p3)">→ ${EMOJI[o.recommended_mood]||''} ${o.recommended_mood}</span>
+      </div>
+      <div><span class="sb ${o.status}" style="font-size:10px">${o.status}</span><div style="font-size:12px;font-weight:600;margin-top:3px">₹${Math.round(o.total)}</div></div>
+    </div>`).join('')
+    :'<div style="color:var(--muted);font-size:12px;padding:12px 0">No orders for this mood yet.</div>';
+}
+
+function renderRecommendedList(mood,recMap){
+  const orders=(recMap[mood]||[]);
+  document.getElementById('recommended-orders-list').innerHTML=orders.length?
+    orders.map(o=>`<div class="mini-order-row">
+      <div><div class="mini-order-num">${o.order_number}</div><div style="font-size:10px;color:var(--muted);margin-top:2px">${new Date(o.created_at).toLocaleDateString('en-IN')}</div></div>
+      <div class="mini-tags">
+        <span class="mini-tag" style="background:rgba(249,115,22,.1);color:var(--accent)">${EMOJI[o.ordered_under_mood]||''} ${o.ordered_under_mood}</span>
+        <span class="mini-tag" style="background:rgba(34,211,238,.1);color:var(--p3)">🎯 ${EMOJI[o.recommended_mood]||''} ${o.recommended_mood}</span>
+      </div>
+      <div><span class="sb ${o.status}" style="font-size:10px">${o.status}</span><div style="font-size:12px;font-weight:600;margin-top:3px">₹${Math.round(o.total)}</div></div>
+    </div>`).join('')
+    :'<div style="color:var(--muted);font-size:12px;padding:12px 0">No orders for this mood yet.</div>';
+}
+
+function renderOrders(){
+  document.getElementById('orders-body').innerHTML=D.recent_orders.map((o,i)=>`<tr>
+    <td style="color:var(--muted)">${i+1}</td>
+    <td><span style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700">${o.order_number}</span></td>
+    <td><span class="sb ${o.status}">${o.status.replace(/_/g,' ')}</span></td>
+    <td style="font-size:11px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(o.items||[]).join(', ')||'—'}</td>
+    <td><span class="mood-tag">${EMOJI[o.ordered_under_mood]||'🍜'} ${o.ordered_under_mood||'—'}</span></td>
+    <td><span class="mood-tag-rec">${EMOJI[o.recommended_mood]||'🎯'} ${o.recommended_mood||'—'}</span></td>
+    <td style="color:var(--muted)">${o.payment}</td>
+    <td style="font-weight:600">₹${o.total.toFixed(0)}</td>
+    <td style="color:var(--muted);font-size:11px">${new Date(o.created_at).toLocaleDateString('en-IN')}</td>
+  </tr>`).join('');
+}
+
+function renderRatings(){
+  const r=D.avg_ratings;
+  const stars=n=>Array.from({length:5},(_,i)=>`<span class="star" style="color:${i<Math.round(n)?'#fbbf24':'#1f1f30'}">${i<Math.round(n)?'★':'☆'}</span>`).join('');
+  document.getElementById('ratings-box').innerHTML=`<div class="rat-row">
+    ${[['OVERALL',r.overall,'#eaeaf5'],['FOOD',r.food,'#f97316'],['DELIVERY',r.delivery,'#a855f7']].map(([lbl,v,col])=>`
+    <div class="rat-item"><div class="rat-label">${lbl}</div><div class="rat-num" style="color:${col}">${v.toFixed(1)}</div><div class="rat-stars">${stars(v)}</div></div>`).join('')}</div>`;
+}
+
+function renderRevenue(){
+  const d=D.orders_timeline.slice(-14);
+  mk('c-rev',{type:'line',data:{labels:d.map(x=>x.date),datasets:[{label:'Revenue ₹',data:d.map(x=>x.revenue),borderColor:'#a855f7',backgroundColor:'rgba(168,85,247,.12)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'#a855f7'}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:GD.grid,ticks:GD.ticks},y:{grid:GD.grid,ticks:GD.ticks}}}});
+}
+
+function renderMLStats(){
+  const m=D.ml_model;
+  document.getElementById('ml-stats-grid').innerHTML=[
+    {val:m.total_updates,lbl:'Training Samples'},
+    {val:m.moods_with_data,lbl:'Moods Learned'},
+    {val:Object.values(m.items_per_mood).reduce((a,b)=>a+b,0),lbl:'Item-Mood Mappings'},
+  ].map(x=>`<div class="ml-sc"><div class="ml-val">${x.val}</div><div class="ml-lbl">${x.lbl}</div></div>`).join('');
+  const counts=m.mood_order_counts||{};
+  const max=Math.max(...Object.values(counts),1);
+  document.getElementById('ml-bars').innerHTML=Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([mood,c])=>`<div class="pr"><div class="pr-lbl">${EMOJI[mood]||''} ${mood}</div><div class="pr-bar"><div class="pr-fill" style="width:${Math.round(c/max*100)}%;background:${MCOLOR[mood]||'#f97316'}"></div></div><div class="pr-val">${c}</div></div>`).join('');
+  const ipm=m.items_per_mood||{};
+  const s=Object.entries(ipm).sort((a,b)=>b[1]-a[1]);
+  mk('c-ml',{type:'bar',data:{labels:s.map(([m])=>`${EMOJI[m]||''} ${m}`),datasets:[{label:'Items',data:s.map(([,v])=>v),backgroundColor:s.map(([m])=>MCOLOR[m]||'#f97316'),borderRadius:5,borderSkipped:false}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:GD.ticks},y:{grid:GD.grid,ticks:{...GD.ticks,stepSize:1}}}}});
+}
+
+function renderTopItems(){
+  const items=D.top_items;
+  const max=Math.max(...items.map(i=>i.order_count),1);
+  document.getElementById('top-items').innerHTML=items.map((it,i)=>`<div class="ir">
+    <div class="ir-rank ${i<3?'gold':''}">${i+1}</div>
+    <div class="ir-info">
+      <div class="ir-name">${it.name}</div>
+      <div class="ir-cat">${it.category.replace(/_/g,' ')} · ${it.cuisine} · ⭐${it.rating}</div>
+      <div class="ir-bar"><div class="ir-fill" style="width:${Math.round(it.order_count/max*100)}%"></div></div>
+    </div>
+    <div class="ir-cnt">${it.order_count.toLocaleString()}</div>
+  </div>`).join('');
+}
+
+function connectSSE(){
+  if(sse) sse.close();
+  sse=new EventSource('/dashboard/stream/');
+  document.getElementById('live-txt').textContent='Stream Live';
+  sse.onmessage=e=>{
+    evCount++;
+    document.getElementById('ev-count').textContent=evCount;
+    const ev=JSON.parse(e.data);
+    if(ev.total_updates!==undefined) document.getElementById('ml-count').textContent=ev.total_updates;
+    appendEv(ev);
+  };
+  sse.onerror=()=>document.getElementById('live-txt').textContent='Reconnecting…';
+}
+
+const EV_CFG={
+  rating_update:{icon:'⭐',cls:'rt',title:e=>`ML Update: ${e.mood}`,meta:e=>`Item #${e.item_id} · ${e.rating}/5 stars · EMA applied`},
+  simulated_order:{icon:'🛒',cls:'or',title:e=>`Sim Order: ${e.item_name}`,meta:e=>`${EMOJI[e.ordered_under_mood||e.mood]||''} ${e.ordered_under_mood||e.mood} → 🎯 ${EMOJI[e.recommended_mood||e.mood]||''} ${e.recommended_mood||e.mood} · ₹${e.price||0} · ${e.rating}★`},
+  voice_session:{icon:'🎤',cls:'se',title:()=>'Voice Session',meta:e=>`Mood: ${e.mood}`},
+  text_analysis:{icon:'💬',cls:'se',title:()=>'Text Analysis',meta:e=>`Mood: ${e.mood}`},
+  new_order:{icon:'📦',cls:'or',title:e=>`Order #${e.order_id}`,meta:e=>`₹${e.total||0} · mood: ${e.mood}`},
+  heartbeat:{icon:'💓',cls:'hb',title:()=>'Heartbeat',meta:e=>`Updates: ${e.total_updates}`},
+};
+
+function appendEv(ev){
+  const body=document.getElementById('stream-body');
+  body.querySelector('.loading')?.remove();
+  const cfg=EV_CFG[ev.type]||EV_CFG.heartbeat;
+  const t=new Date((ev.ts||Date.now()/1000)*1000).toLocaleTimeString('en-IN');
+  const d=document.createElement('div');
+  d.className='ev';
+  d.innerHTML=`<div class="ev-icon ${cfg.cls}">${cfg.icon}</div><div class="ev-body"><div class="ev-title">${cfg.title(ev)}</div><div class="ev-meta">${cfg.meta(ev)}</div></div><div class="ev-time">${t}</div>`;
+  body.prepend(d);
+  while(body.children.length>80) body.removeChild(body.lastChild);
+}
+
+function clearStream(){
+  document.getElementById('stream-body').innerHTML='<div class="loading"><div class="spin"></div><span>Waiting for events…</span></div>';
+  evCount=0;document.getElementById('ev-count').textContent='0';
+}
+
+async function simulate(){
+  const btn=document.getElementById('sim-btn');
+  btn.disabled=true;btn.textContent='⏳…';
+  try{
+    const r=await fetch('/dashboard/simulate/');
+    const d=await r.json();
+    notify('🛒','MoodBowl Order Simulated!',`${EMOJI[d.ordered_under_mood]||''} ${d.ordered_under_mood} → 🎯 ${d.recommended_mood} — ${d.item} · ${d.rating}★`);
+    setTimeout(loadData,600);
+  }catch(e){notify('⚠️','Error',e.message);}
+  finally{btn.disabled=false;btn.textContent='⚡ Simulate Order';}
+}
+
+let ntimer;
+function notify(icon,title,sub){
+  document.getElementById('n-icon').textContent=icon;
+  document.getElementById('n-title').textContent=title;
+  document.getElementById('n-sub').textContent=sub;
+  const n=document.getElementById('notif');
+  n.classList.add('show');
+  clearTimeout(ntimer);
+  ntimer=setTimeout(()=>n.classList.remove('show'),4000);
+}
+
+loadData();
+setInterval(()=>{if(D)loadData();},30000);
+</script>
+</body>
+</html>

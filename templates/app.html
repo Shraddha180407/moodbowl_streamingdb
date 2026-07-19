@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MoodBite — Eat What You Feel</title>
+<link rel="stylesheet" href="/static/css/app.css">
+<meta name="theme-color" content="#FF8FAB">
+</head>
+<body class="mood-happy">
+
+<div class="mood-flash-overlay" id="mood-flash-overlay"></div>
+
+<div class="app-container">
+
+  <!-- ── Splash ── -->
+  <div id="splash-view" class="view">
+    <h1>MoodBite</h1>
+    <p>Eat What You Feel</p>
+    <div class="loading-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+  </div>
+
+  <!-- ── Onboarding 1 ── -->
+  <div id="onboarding-1-view" class="view">
+    <div class="top-nav"><button class="skip-btn" onclick="switchView('login')">Skip</button></div>
+    <div class="content flex-center">
+      <div class="voice-hero"><div class="mic-circle">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+      </div></div>
+      <h2>Voice-First Ordering</h2>
+      <p class="subtitle">Simply tell us what you feel like eating. No menus, no endless scrolling.</p>
+      <div class="dots-nav"><span class="dot active"></span><span class="dot"></span><span class="dot"></span></div>
+      <button class="primary-btn wide" onclick="switchView('onboarding-2')">Next →</button>
+    </div>
+  </div>
+
+  <!-- ── Onboarding 2 ── -->
+  <div id="onboarding-2-view" class="view">
+    <div class="top-nav"><button class="skip-btn" onclick="switchView('login')">Skip</button></div>
+    <div class="content flex-center">
+      <div class="voice-hero"><div class="mic-circle secondary-gradient">🧠</div></div>
+      <h2>Mood Detection</h2>
+      <p class="subtitle">Our AI analyses your mood through voice and behaviour to suggest perfectly matched meals.</p>
+      <div class="dots-nav"><span class="dot"></span><span class="dot active"></span><span class="dot"></span></div>
+      <button class="primary-btn wide" onclick="switchView('onboarding-3')">Next →</button>
+    </div>
+  </div>
+
+  <!-- ── Onboarding 3 ── -->
+  <div id="onboarding-3-view" class="view">
+    <div class="content flex-center">
+      <div class="voice-hero"><div class="mic-circle comfort-gradient">❤️</div></div>
+      <h2>Personalised For You</h2>
+      <p class="subtitle">Every rating you give trains the AI to recommend even better next time.</p>
+      <div class="dots-nav"><span class="dot"></span><span class="dot"></span><span class="dot active"></span></div>
+      <button class="primary-btn wide" onclick="finishOnboarding()">Get Started</button>
+    </div>
+  </div>
+
+  <!-- ── Login ── -->
+  <div id="login-view" class="view">
+    <div class="login-header">
+      <h2>MoodBite</h2>
+      <p>Welcome back!</p>
+    </div>
+    <div class="login-form">
+      <div class="auth-error" id="auth-error"></div>
+      <div class="form-group">
+        <label>Email</label>
+        <div class="input-with-icon">
+          <span>✉️</span>
+          <input type="email" id="login-email" placeholder="your@email.com" autocomplete="email">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <div class="input-with-icon">
+          <span>🔒</span>
+          <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+        </div>
+      </div>
+      <button class="primary-btn wide" onclick="performAuth('login')">Login</button>
+      <div class="divider">or</div>
+      <button class="outline-btn wide" onclick="performAuth('register')">Create Account</button>
+      <button class="ghost-btn wide" onclick="switchView('mood-selection')">Continue as Guest</button>
+      <p style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:8px">Demo: user1@moodbite.demo / demo1234</p>
+    </div>
+  </div>
+
+  <!-- ── Mood Selection ── -->
+  <div id="mood-selection-view" class="view">
+    <div class="mood-header">
+      <h2>How are you feeling?</h2>
+      <p>Help us find the perfect meal</p>
+    </div>
+    <div class="mood-bito-section">
+      <div class="mood-bito-bubble" id="mood-bito-bubble">Hey there! 👋 Tap a mood and I'll find the perfect meal!</div>
+      <div id="mood-bito-svg-wrapper">
+        <div class="mood-bito-ring"></div><div class="mood-bito-ring"></div>
+        <svg id="mood-bito-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="50" cy="75" rx="22" ry="18" fill="#FF8FAB"/>
+          <polygon points="44,66 50,70 44,74" fill="#fff" opacity=".9"/>
+          <polygon points="56,66 50,70 56,74" fill="#fff" opacity=".9"/>
+          <circle cx="50" cy="70" r="2.5" fill="#FFB3C6"/>
+          <circle cx="50" cy="77" r="1.5" fill="white" opacity=".7"/>
+          <circle cx="50" cy="83" r="1.5" fill="white" opacity=".7"/>
+          <circle cx="50" cy="42" r="20" fill="#FFDAC1"/>
+          <rect x="32" y="22" width="36" height="10" rx="3" fill="white"/>
+          <ellipse cx="50" cy="22" rx="14" ry="8" fill="white"/>
+          <circle cx="43" cy="42" r="3.2" fill="#3D2B3D"/>
+          <circle cx="57" cy="42" r="3.2" fill="#3D2B3D"/>
+          <circle cx="44.2" cy="40.8" r="1.1" fill="white"/>
+          <circle cx="58.2" cy="40.8" r="1.1" fill="white"/>
+          <path id="bito-mouth-main" d="M43 50 Q50 56 57 50" stroke="#3D2B3D" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <ellipse cx="38" cy="48" rx="4" ry="2.8" fill="#FF8FAB" opacity=".4"/>
+          <ellipse cx="62" cy="48" rx="4" ry="2.8" fill="#FF8FAB" opacity=".4"/>
+          <ellipse cx="28" cy="72" rx="6" ry="10" fill="#FF8FAB" transform="rotate(-20 28 72)"/>
+          <ellipse cx="72" cy="72" rx="6" ry="10" fill="#FF8FAB" transform="rotate(20 72 72)"/>
+          <ellipse cx="75" cy="62" rx="12" ry="4" fill="#e8e0e8"/>
+          <ellipse cx="75" cy="60" rx="5" ry="5" fill="#FFB3C6" opacity=".8"/>
+        </svg>
+      </div>
+    </div>
+    <div class="mood-grid">
+      <div class="mood-card active" data-mood="happy"><div class="mood-emoji-bg">😊</div><span>Happy</span><div class="check">✓</div></div>
+      <div class="mood-card" data-mood="sad"><div class="mood-emoji-bg">😔</div><span>Sad</span><div class="check">✓</div></div>
+      <div class="mood-card" data-mood="stressed"><div class="mood-emoji-bg">😰</div><span>Stressed</span><div class="check">✓</div></div>
+      <div class="mood-card" data-mood="tired"><div class="mood-emoji-bg">😴</div><span>Tired</span><div class="check">✓</div></div>
+      <div class="mood-card" data-mood="excited"><div class="mood-emoji-bg">🤩</div><span>Excited</span><div class="check">✓</div></div>
+      <div class="mood-card" data-mood="comfort"><div class="mood-emoji-bg">🤗</div><span>Comfort</span><div class="check">✓</div></div>
+    </div>
+    <div class="intensity-section">
+      <p>How intense is this feeling?</p>
+      <input type="range" min="1" max="10" value="5" class="intensity-slider">
+      <div class="range-labels"><span>Low</span><span>High</span></div>
+    </div>
+    <p class="voice-prompt">Or record your mood by voice:</p>
+    <button class="outline-btn wide voice-trigger">🎤 Record Voice</button>
+    <button class="primary-btn wide mt-auto" onclick="enterApp()">Continue to Home</button>
+  </div>
+
+  <!-- ── Home ── -->
+  <div id="home-view" class="view">
+    <header class="home-header">
+      <div class="user-info">
+        <p class="greeting" id="home-greeting">Hi there 👋</p>
+        <p class="current-mood-status">Mood: <span id="home-mood-label">Happy</span></p>
+      </div>
+      <button class="notif-btn">🔔</button>
+    </header>
+    <div class="main-mic-section">
+      <button class="big-mic-btn voice-trigger">
+        <div class="mic-ripple"></div>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+      </button>
+      <p>Tap to speak your craving</p>
+    </div>
+    <div class="view-all-section">
+      <h4>What's your vibe?</h4>
+      <div class="mood-pills">
+        <button class="pill active">Happy</button>
+        <button class="pill">Stressed</button>
+        <button class="pill">Tired</button>
+        <button class="pill">Celebrating</button>
+        <button class="pill">Comfort Food</button>
+      </div>
+    </div>
+    <div class="home-recs">
+      <h4>Recommended for You</h4>
+      <div class="home-rec-cards"></div>
+    </div>
+  </div>
+
+  <!-- ── Explore ── -->
+  <div id="explore-view" class="view">
+    <header class="view-header"><h3>Explore Menu</h3></header>
+    <div class="search-bar-container">
+      <div class="search-bar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" placeholder="Search dishes or cuisines…">
+        <button class="mic-search-btn voice-trigger">🎤</button>
+      </div>
+    </div>
+    <div class="explore-content">
+      <div class="category-scroll">
+        <button class="cat-chip active">All</button>
+        <button class="cat-chip">Indian</button>
+        <button class="cat-chip">Italian</button>
+        <button class="cat-chip">Chinese</button>
+        <button class="cat-chip">Continental</button>
+        <button class="cat-chip">Mexican</button>
+        <button class="cat-chip">Japanese</button>
+        <button class="cat-chip">Thai</button>
+      </div>
+      <div id="restaurant-list" class="restaurant-list"></div>
+    </div>
+  </div>
+
+  <!-- ── Cart ── -->
+  <div id="cart-view" class="view">
+    <header class="view-header"><h3>My Cart 🛒</h3></header>
+    <div id="cart-empty-state" class="empty-state">
+      <div style="font-size:64px">🛒</div>
+      <h4>Your cart is empty</h4>
+      <p>Hungry? Find something delicious and it'll appear here.</p>
+      <button class="primary-btn" onclick="switchView('explore')">Explore Menu</button>
+    </div>
+    <div class="cart-content">
+      <div id="cart-list" class="cart-list" style="display:none"></div>
+      <div class="cart-summary" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ── Favourites ── -->
+  <div id="favorites-view" class="view">
+    <header class="view-header"><h3>Favourites ❤️</h3></header>
+    <div class="empty-state">
+      <div style="font-size:64px">❤️</div>
+      <h4>No favourites yet</h4>
+      <p>Add dishes you love to find them here easily!</p>
+      <button class="primary-btn" onclick="switchView('explore')">Explore Menu</button>
+    </div>
+  </div>
+
+  <!-- ── Profile ── -->
+  <div id="profile-view" class="view">
+    <div class="profile-header">
+      <div class="profile-large-avatar">G</div>
+      <h3>Guest User</h3>
+      <p>guest@moodbite.app</p>
+    </div>
+    <div class="settings-list">
+      <div class="settings-section">
+        <h4>Account</h4>
+        <button class="set-item"><span>👤 Edit Profile</span><span>›</span></button>
+        <button class="set-item"><span>📍 Saved Addresses</span><span>›</span></button>
+      </div>
+      <div class="settings-section">
+        <h4>Voice &amp; Mood</h4>
+        <button class="set-item"><span>🎤 Voice Settings</span><span>›</span></button>
+        <button class="set-item" onclick="switchView('recommendations')"><span>🤖 Get Recommendations</span><span>›</span></button>
+      </div>
+      <div class="settings-section">
+        <h4>System</h4>
+        <button class="set-item"><span>🌙 Dark Mode</span><span class="toggle">⚪</span></button>
+        <button class="set-item"><span>🔔 Notifications</span><span>›</span></button>
+      </div>
+      <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+    </div>
+  </div>
+
+  <!-- ── Recommendations ── -->
+  <div id="recommendations-view" class="view">
+    <header class="rec-header">
+      <button class="back-btn" onclick="switchView('home')">←</button>
+      <h3>Recommended for You</h3>
+      <button class="cart-btn" onclick="switchView('cart')">🛒</button>
+    </header>
+    <div class="mood-banner">Mood: Happy 😊</div>
+    <div class="insight-card">
+      <p id="rec-insight">Joyful dishes matched to your happy mood!</p>
+    </div>
+    <div class="top-pick-container">
+      <h4 style="padding:12px 16px 8px;font-size:15px;font-weight:600">⭐ Top Pick</h4>
+      <div class="top-pick-card">
+        <div class="card-img" style="background:var(--grad-main);">
+          <span style="font-size:52px">🍛</span>
+        </div>
+        <div class="card-body">
+          <div class="card-row">
+            <h5>Butter Chicken</h5>
+            <span class="card-price">₹349</span>
+          </div>
+          <p class="vendor">Indian · Main Course</p>
+          <p class="card-desc">Loading recommendation…</p>
+          <div class="card-meta">⭐ 4.7 · 30 min</div>
+          <button class="primary-btn wide cart-add" style="margin-top:10px">🛒 Add to Cart</button>
+        </div>
+        <button class="fav-btn">🤍</button>
+      </div>
+    </div>
+    <div class="other-options">
+      <h4>More Options</h4>
+      <div class="option-list" id="recommendations-list"></div>
+    </div>
+  </div>
+
+  <!-- ── Tracking ── -->
+  <div id="tracking-view" class="view">
+    <div class="tracking-header"><h2>Live Tracker 🚗</h2></div>
+    <div class="tracking-body">
+      <div class="tracking-status">
+        <h3 id="tracking-title">Placing Order…</h3>
+        <p id="tracking-desc">Please wait while we confirm your order.</p>
+      </div>
+      <div class="track-bar-wrap"><div class="track-bar" id="tracking-progress" style="width:5%"></div></div>
+      <div class="tracking-steps">
+        <div class="step"><div class="step-icon" id="step-1">📝</div><p class="step-label">Confirmed</p></div>
+        <div class="step"><div class="step-icon" id="step-2">👨‍🍳</div><p class="step-label">Cooking</p></div>
+        <div class="step"><div class="step-icon" id="step-3">🚗</div><p class="step-label">On the Way</p></div>
+        <div class="step"><div class="step-icon" id="step-4">✅</div><p class="step-label">Delivered</p></div>
+      </div>
+      <button class="primary-btn wide" id="back-home-btn" style="display:none;margin-top:auto" onclick="switchView('home')">Return Home 🏠</button>
+    </div>
+  </div>
+
+  <!-- ── Bottom nav ── -->
+  <nav class="bottom-nav" style="display:none">
+    <button class="nav-item active" data-view="home"><span class="icon">🏠</span><span>Home</span></button>
+    <button class="nav-item" data-view="explore"><span class="icon">🔍</span><span>Explore</span></button>
+    <button class="nav-item" data-view="cart"><span class="icon">🛒</span><span>Cart</span></button>
+    <button class="nav-item" data-view="favorites"><span class="icon">❤️</span><span>Saved</span></button>
+    <button class="nav-item" data-view="profile"><span class="icon">👤</span><span>Profile</span></button>
+  </nav>
+
+  <!-- ── Bito mascot ── -->
+  <div id="bito-container">
+    <div id="bito-speech"></div>
+    <div class="bito-avatar-wrapper">
+      <div class="bito-ring"></div><div class="bito-ring"></div>
+      <svg id="bito-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="50" cy="75" rx="22" ry="18" fill="#FF8FAB"/>
+        <polygon points="44,66 50,70 44,74" fill="#fff" opacity=".9"/>
+        <polygon points="56,66 50,70 56,74" fill="#fff" opacity=".9"/>
+        <circle cx="50" cy="70" r="2.5" fill="#FFB3C6"/>
+        <circle cx="50" cy="77" r="1.5" fill="white" opacity=".7"/>
+        <circle cx="50" cy="83" r="1.5" fill="white" opacity=".7"/>
+        <circle cx="50" cy="42" r="20" fill="#FFDAC1"/>
+        <rect x="32" y="22" width="36" height="10" rx="3" fill="white"/>
+        <ellipse cx="50" cy="22" rx="14" ry="8" fill="white"/>
+        <circle cx="43" cy="42" r="3" fill="#3D2B3D"/>
+        <circle cx="57" cy="42" r="3" fill="#3D2B3D"/>
+        <circle cx="44" cy="41" r="1" fill="white"/>
+        <circle cx="58" cy="41" r="1" fill="white"/>
+        <path id="bito-mouth" d="M43 50 Q50 56 57 50" stroke="#3D2B3D" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <ellipse cx="38" cy="48" rx="4" ry="3" fill="#FF8FAB" opacity=".35"/>
+        <ellipse cx="62" cy="48" rx="4" ry="3" fill="#FF8FAB" opacity=".35"/>
+        <ellipse cx="28" cy="72" rx="6" ry="10" fill="#FF8FAB" transform="rotate(-20 28 72)"/>
+        <ellipse cx="72" cy="72" rx="6" ry="10" fill="#FF8FAB" transform="rotate(20 72 72)"/>
+        <ellipse cx="75" cy="62" rx="12" ry="4" fill="#e8e0e8"/>
+        <ellipse cx="75" cy="60" rx="5" ry="5" fill="#FFB3C6" opacity=".8"/>
+      </svg>
+    </div>
+  </div>
+
+</div><!-- /app-container -->
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

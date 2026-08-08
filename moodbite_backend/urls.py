@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 from django.utils import timezone
 from django.views.generic import TemplateView
 
@@ -56,7 +56,29 @@ def app_config(request):
     }})
 
 
+def serve_unregister_sw(request):
+    js_content = """
+    self.addEventListener('install', function(e) {
+      self.skipWaiting();
+    });
+    self.addEventListener('activate', function(e) {
+      self.registration.unregister()
+        .then(function() {
+          return self.clients.matchAll();
+        })
+        .then(function(clients) {
+          clients.forEach(client => {
+            try { client.navigate(client.url); } catch(err) {}
+          });
+        });
+    });
+    """
+    return HttpResponse(js_content, content_type='application/javascript')
+
+
 urlpatterns = [
+    # Clean up old service worker
+    path('sw.js', serve_unregister_sw),
     # Root redirect
     path('', lambda r: HttpResponseRedirect('/app/')),
     # Frontend SPA

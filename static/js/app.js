@@ -73,25 +73,108 @@ function switchView(name, direction='forward') {
 }
 
 function updateBottomNav(view) {
-  const mainViews = ['home','explore','cart','favorites','profile'];
+  const mainViews = ['home','explore','cart','favorites','profile','recommendations'];
   const nav = document.querySelector('.bottom-nav');
   const bito = document.getElementById('bito-container');
   if (mainViews.includes(view)) {
-    nav.style.display = 'flex';
-    if (view !== 'splash') bito.style.display = 'block';
+    if (nav) nav.style.display = 'flex';
+    if (bito) bito.style.display = 'block';
     document.querySelectorAll('.nav-item').forEach(b => {
       b.classList.toggle('active', b.dataset.view === view);
     });
   } else {
-    nav.style.display = view === 'recommendations' || view === 'tracking' ? 'none' : 'flex';
-    if (['login','onboarding-1','onboarding-2','onboarding-3','splash','mood-selection'].includes(view)) bito.style.display = 'none';
+    if (nav) nav.style.display = 'none';
+    if (bito) bito.style.display = 'none';
   }
 }
 
+let favoritesList = JSON.parse(localStorage.getItem('mb_favorites') || '[]');
+
+function toggleFavorite(itemId, btn) {
+  const idx = favoritesList.indexOf(itemId);
+  if (idx > -1) {
+    favoritesList.splice(idx, 1);
+    btn.textContent = '🤍';
+    toast('Removed from saved items');
+  } else {
+    favoritesList.push(itemId);
+    btn.textContent = '❤️';
+    toast('Saved to your favorites! ❤️', 'success');
+  }
+  localStorage.setItem('mb_favorites', JSON.stringify(favoritesList));
+  if (document.getElementById('favorites-view').classList.contains('active')) {
+    loadFavorites();
+  }
+}
+
+async function loadFavorites() {
+  const container = document.getElementById('favorites-list');
+  if (!container) return;
+  if (!favoritesList.length) {
+    container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">No saved items yet</div>';
+    return;
+  }
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Loading…</div>';
+  try {
+    const res = await api('GET', '/menu/items/?limit=50');
+    if (res.success && res.data?.items) {
+      const allItems = res.data.items;
+      const favItems = allItems.filter(item => favoritesList.includes(item.id));
+      if (!favItems.length) {
+        container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">No saved items yet</div>';
+        return;
+      }
+      const FOOD_EMOJI = {main_course:'🍛',comfort_food:'🍲',healthy:'🥗',dessert:'🍰',beverage:'🧃',starter:'🥗',street_food:'🌯',breakfast:'🥞',snack:'🍿'};
+      container.innerHTML = favItems.map(item => {
+        const isFav = favoritesList.includes(item.id);
+        const imgContent = item.image ? `<img src="${item.image}" alt="${item.name}" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">` : '';
+        const fallbackContent = `<span style="${item.image ? 'display:none;' : 'display:flex;'} justify-content:center; align-items:center; width:100%; height:100%;">${FOOD_EMOJI[item.category]||'🍽️'}</span>`;
+        return `
+        <div class="food-card">
+          <div class="food-card-img" style="overflow:hidden; display:flex; align-items:center; justify-content:center; background:#fee2e6; position:relative;">
+            ${imgContent}${fallbackContent}
+          </div>
+          <div class="food-card-body">
+            <div class="food-card-name">${item.name}</div>
+            <div class="food-card-sub">${item.cuisine} · ${item.category.replace('_',' ')} · ${item.is_vegetarian?'🟢':'🔴'}</div>
+            <div class="food-card-row">
+              <span class="food-card-price">${formatPrice(item.price)}</span>
+              <span class="food-card-rating">${formatRating(item.rating)}</span>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <button class="fav-icon-btn" onclick="toggleFavorite(${item.id}, this)" style="background:none; border:none; font-size:18px; cursor:pointer; padding:0; outline:none;">${isFav?'❤️':'🤍'}</button>
+                <button class="food-card-add" onclick="addToCart(${item.id}, '${item.name.replace(/'/g,"\\'")}', ${item.price})">+ Add</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    } else {
+      container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">Could not load saved items</div>';
+    }
+  } catch (err) {
+    container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">Connection error</div>';
+  }
+}
+
+let hasAutoGreeted = false;
+
 function onViewEnter(view) {
-  if (view === 'home') loadHomeRecs();
+  if (view === 'home') {
+    loadHomeRecs();
+    if (!hasAutoGreeted) {
+      hasAutoGreeted = true;
+      setTimeout(autoGreetAndListen, 500);
+    }
+  }
+  if (view === 'mood-selection') {
+    if (!hasAutoGreeted) {
+      hasAutoGreeted = true;
+      setTimeout(autoGreetAndListen, 500);
+    }
+  }
   if (view === 'explore') loadExplore();
   if (view === 'cart') loadCart();
+  if (view === 'favorites') loadFavorites();
   if (view === 'profile') loadProfile();
   if (view === 'recommendations') loadRecommendations();
 }
@@ -120,7 +203,7 @@ async function performAuth(mode) {
       localStorage.setItem('mb_access',  authToken);
       localStorage.setItem('mb_refresh', refreshTok);
       localStorage.setItem('mb_user', JSON.stringify(currentUser));
-      toast('Welcome to MoodBite! 🎉', 'success');
+      toast('Welcome to MoodBowl! 🎉', 'success');
       switchView('mood-selection');
     } else {
       errEl.textContent = res.error?.message || 'Authentication failed';
@@ -129,6 +212,27 @@ async function performAuth(mode) {
   } catch(e) {
     errEl.textContent = 'Network error. Is the server running?';
     errEl.classList.add('show');
+  } finally { hideLoader(); }
+}
+
+async function loginAsGuest() {
+  try {
+    showLoader();
+    const res = await api('POST', '/auth/login/', {email: 'user1@moodbite.demo', password: 'demo1234'});
+    if (res.success || res.token) {
+      authToken  = res.token.access;
+      refreshTok = res.token.refresh;
+      currentUser = res.data;
+      localStorage.setItem('mb_access',  authToken);
+      localStorage.setItem('mb_refresh', refreshTok);
+      localStorage.setItem('mb_user', JSON.stringify(currentUser));
+      toast('Welcome to MoodBowl! 🎉', 'success');
+      switchView('mood-selection');
+    } else {
+      toast('Guest login failed. Try typing demo login instead.', 'error');
+    }
+  } catch(e) {
+    toast('Network error during guest login.', 'error');
   } finally { hideLoader(); }
 }
 
@@ -230,19 +334,30 @@ function loadHomeMock() {
 
 function renderFoodCards(container, items, showAdd=true) {
   const FOOD_EMOJI = {main_course:'🍛',comfort_food:'🍲',healthy:'🥗',dessert:'🍰',beverage:'🧃',starter:'🥗',street_food:'🌯',breakfast:'🥞',snack:'🍿'};
-  container.innerHTML = items.map(item => `
-    <div class="food-card" data-id="${item.item_id||item.id}">
-      <div class="food-card-img">${FOOD_EMOJI[item.category]||'🍽️'}</div>
+  container.innerHTML = items.map(item => {
+    const itemId = item.item_id || item.id;
+    const isFav = favoritesList.includes(itemId);
+    const imgContent = item.image ? `<img src="${item.image}" alt="${item.name}" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">` : '';
+    const fallbackContent = `<span style="${item.image ? 'display:none;' : 'display:flex;'} justify-content:center; align-items:center; width:100%; height:100%;">${FOOD_EMOJI[item.category]||'🍽️'}</span>`;
+    return `
+    <div class="food-card" data-id="${itemId}">
+      <div class="food-card-img" style="overflow:hidden; display:flex; align-items:center; justify-content:center; background:#fee2e6; position:relative;">
+        ${imgContent}${fallbackContent}
+      </div>
       <div class="food-card-body">
         <div class="food-card-name">${item.name}</div>
         <div class="food-card-sub">${item.cuisine} · ${item.is_vegetarian?'🟢 Veg':'🔴 Non-veg'}</div>
         <div class="food-card-row">
           <span class="food-card-price">${formatPrice(item.price)}</span>
           <span class="food-card-rating">${formatRating(item.rating)}</span>
-          ${showAdd ? `<button class="food-card-add" onclick="addToCart(${item.item_id||item.id}, '${item.name}', ${item.price})">+ Add</button>` : ''}
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="fav-icon-btn" onclick="event.stopPropagation(); toggleFavorite(${itemId}, this)" style="background:none; border:none; font-size:18px; cursor:pointer; padding:0; outline:none;">${isFav?'❤️':'🤍'}</button>
+            ${showAdd ? `<button class="food-card-add" onclick="addToCart(${itemId}, '${item.name.replace(/'/g,"\\'")}', ${item.price})">+ Add</button>` : ''}
+          </div>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // Pill mood filter on home
@@ -282,19 +397,29 @@ async function loadExplore(search='', category='') {
 function renderExploreItems(container, items) {
   if (!items.length) { container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">No items found</div>'; return; }
   const FOOD_EMOJI = {main_course:'🍛',comfort_food:'🍲',healthy:'🥗',dessert:'🍰',beverage:'🧃',starter:'🥗',street_food:'🌯',breakfast:'🥞',snack:'🍿'};
-  container.innerHTML = items.map(item => `
+  container.innerHTML = items.map(item => {
+    const isFav = favoritesList.includes(item.id);
+    const imgContent = item.image ? `<img src="${item.image}" alt="${item.name}" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">` : '';
+    const fallbackContent = `<span style="${item.image ? 'display:none;' : 'display:flex;'} justify-content:center; align-items:center; width:100%; height:100%;">${FOOD_EMOJI[item.category]||'🍽️'}</span>`;
+    return `
     <div class="food-card">
-      <div class="food-card-img">${FOOD_EMOJI[item.category]||'🍽️'}</div>
+      <div class="food-card-img" style="overflow:hidden; display:flex; align-items:center; justify-content:center; background:#fee2e6; position:relative;">
+        ${imgContent}${fallbackContent}
+      </div>
       <div class="food-card-body">
         <div class="food-card-name">${item.name}</div>
         <div class="food-card-sub">${item.cuisine} · ${item.category.replace('_',' ')} · ${item.is_vegetarian?'🟢':'🔴'}</div>
         <div class="food-card-row">
           <span class="food-card-price">${formatPrice(item.price)}</span>
           <span class="food-card-rating">${formatRating(item.rating)}</span>
-          <button class="food-card-add" onclick="addToCart(${item.id}, '${item.name.replace(/'/g,"\\'")}', ${item.price})">+ Add</button>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="fav-icon-btn" onclick="toggleFavorite(${item.id}, this)" style="background:none; border:none; font-size:18px; cursor:pointer; padding:0; outline:none;">${isFav?'❤️':'🤍'}</button>
+            <button class="food-card-add" onclick="addToCart(${item.id}, '${item.name.replace(/'/g,"\\'")}', ${item.price})">+ Add</button>
+          </div>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // Search
@@ -324,14 +449,33 @@ async function loadRecommendations() {
       const items = res.data.recommendations;
       // Top pick
       const top = items[0];
+      const itemId = top.item_id || top.id;
+      
       const tp = document.querySelector('.top-pick-card .card-body');
       if (tp) {
         tp.querySelector('h5').textContent = top.name;
         tp.querySelector('.card-price').textContent = formatPrice(top.price);
         tp.querySelector('.vendor').textContent = top.cuisine + ' · ' + top.category.replace('_',' ');
         tp.querySelector('.card-desc').textContent = top.recommendation_reason;
-        tp.querySelector('.cart-add').onclick = () => addToCart(top.item_id, top.name, top.price);
+        tp.querySelector('.cart-add').onclick = () => addToCart(itemId, top.name, top.price);
       }
+      
+      const tp_img = document.querySelector('.top-pick-card .card-img');
+      if (tp_img) {
+        const FOOD_EMOJI = {main_course:'🍛',comfort_food:'🍲',healthy:'🥗',dessert:'🍰',beverage:'🧃',starter:'🥗',street_food:'🌯',breakfast:'🥞',snack:'🍿'};
+        const emoji = FOOD_EMOJI[top.category] || '🍛';
+        const imgContent = top.image ? `<img src="${top.image}" alt="${top.name}" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">` : '';
+        const fallbackContent = `<span style="${top.image ? 'display:none;' : 'display:flex;'} justify-content:center; align-items:center; width:100%; height:100%; font-size:52px;">${emoji}</span>`;
+        tp_img.innerHTML = `${imgContent}${fallbackContent}`;
+      }
+      
+      const favBtn = document.querySelector('.top-pick-card .fav-btn');
+      if (favBtn) {
+        const isFav = favoritesList.includes(itemId);
+        favBtn.textContent = isFav ? '❤️' : '🤍';
+        favBtn.onclick = () => toggleFavorite(itemId, favBtn);
+      }
+      
       // Rest
       renderExploreItems(list, items.slice(1));
     }
@@ -594,12 +738,85 @@ function bitaSay(msg) {
   speech.classList.add('visible');
   clearTimeout(bitaSay._t);
   bitaSay._t = setTimeout(() => speech.classList.remove('visible'), 5000);
+  
+  // Verbally speak the message out loud (strip emojis first)
+  const cleanMsg = msg.replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, "");
+  speakTextLocal(cleanMsg);
 }
 
 document.getElementById('bito-container')?.addEventListener('click', () => {
   const msgs = ["What can I get for you? 😊","I'll find something delicious!","Tell me your mood and I'll match it!","Psst — try the mood-based recommendations!"];
   bitaSay(msgs[Math.floor(Math.random()*msgs.length)]);
 });
+
+// ── Voice Command Control ──────────────────────────────────────────────────────
+let loadedMenuItems = [];
+async function cacheMenuItems() {
+  try {
+    const res = await api('GET', '/menu/items/?limit=50');
+    if (res.success && res.data?.items) {
+      loadedMenuItems = res.data.items;
+      console.log("[VoiceControl] Cached menu items for voice matching:", loadedMenuItems.length);
+    }
+  } catch(e) {
+    console.error("[VoiceControl] Failed to cache menu items:", e);
+  }
+}
+
+function parseVoiceCommand(text) {
+  if (!text) return false;
+  const cleanText = text.toLowerCase().trim();
+  console.log("[VoiceControl] Parsing command: ", cleanText);
+  
+  // Cart / Checkout navigation
+  if (cleanText.includes("cart") || cleanText.includes("checkout") || cleanText.includes("basket") || cleanText.includes("check out")) {
+    switchView('cart');
+    bitaSay("Opening your cart! 🛒");
+    return true;
+  }
+
+  // Explore / Menu navigation
+  if (cleanText.includes("explore") || cleanText.includes("menu") || cleanText.includes("search") || cleanText.includes("browse") || cleanText.includes("dishes")) {
+    switchView('explore');
+    bitaSay("Opening the Explore menu! 🔍");
+    return true;
+  }
+
+  // Home navigation
+  if (cleanText.includes("home") || cleanText.includes("go back") || cleanText.includes("main page")) {
+    switchView('home');
+    bitaSay("Going to the home screen. 🏠");
+    return true;
+  }
+
+  // Favorites / Saved navigation
+  if (cleanText.includes("favorite") || cleanText.includes("saved") || cleanText.includes("wishlist")) {
+    switchView('favorites');
+    bitaSay("Opening your saved favorites! ❤️");
+    return true;
+  }
+
+  // Profile / Settings navigation
+  if (cleanText.includes("profile") || cleanText.includes("account") || cleanText.includes("setting")) {
+    switchView('profile');
+    bitaSay("Opening your profile. 👤");
+    return true;
+  }
+  
+  // Add item to cart by name
+  if (cleanText.includes("add") || cleanText.includes("order") || cleanText.includes("buy") || cleanText.includes("put")) {
+    for (const item of loadedMenuItems) {
+      const itemNameLower = item.name.toLowerCase();
+      if (cleanText.includes(itemNameLower)) {
+        addToCart(item.id, item.name, item.price);
+        bitaSay(`Added ${item.name} to your cart! 🛒`);
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
 
 // ── Voice (Web Speech API) ────────────────────────────────────────────────────
 let recognition;
@@ -616,12 +833,20 @@ function startVoice(btn) {
   recognition.onresult = async e => {
     const text = e.results[0][0].transcript;
     btn.classList.remove('recording');
+    if (parseVoiceCommand(text)) {
+      return;
+    }
     bitaSay(`I heard: "${text}" — analyzing mood…`);
     try {
       if (authToken) {
         const res = await api('POST', '/ai/analyze-text/', {text, context:{time_of_day: getTimeOfDay()}});
         if (res.success) {
           const mood = res.data.mood_analysis.primary_mood;
+          const conf = res.data.mood_analysis.confidence || 0;
+          if (mood === 'unknown' || conf <= 0.1) {
+            bitaSay("I didn't quite catch your mood! Try saying 'I feel happy', 'stressed', 'tired', or ask me to 'open cart'!");
+            return;
+          }
           currentMood = mood;
           localStorage.setItem('mb_mood', mood);
           const emoji = res.data.mood_analysis.emoji;
@@ -636,8 +861,86 @@ function startVoice(btn) {
     } catch(err) { toast('Could not analyze. Try again.', 'error'); }
   };
   recognition.onerror = () => { btn.classList.remove('recording'); bitaSay("Couldn't hear that. Please try again."); };
-  recognition.onend   = () => btn.classList.remove('recording');
-  recognition.start();
+}
+
+let isContinuousListening = false;
+let continuousRecognition = null;
+
+function autoGreetAndListen() {
+  const greeting = "Welcome to MoodBite! Tell me your mood or what you feel like eating today!";
+  bitaSay(greeting);
+  setTimeout(() => {
+    startContinuousVoice();
+  }, 3200);
+}
+
+function startContinuousVoice() {
+  if (isContinuousListening) return;
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
+  
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  continuousRecognition = new SR();
+  continuousRecognition.lang = 'en-IN';
+  continuousRecognition.continuous = true;
+  continuousRecognition.interimResults = false;
+  
+  const micBtns = document.querySelectorAll('.voice-trigger');
+  micBtns.forEach(btn => btn.classList.add('recording'));
+  
+  continuousRecognition.onresult = async e => {
+    const text = e.results[e.results.length - 1][0].transcript.trim();
+    if (!text) return;
+    console.log("[ContinuousVoice] Heard:", text);
+    
+    if (parseVoiceCommand(text)) return;
+    
+    bitaSay(`I heard: "${text}" — finding matching meals…`);
+    try {
+      if (authToken) {
+        const res = await api('POST', '/ai/analyze-text/', {text, context:{time_of_day: getTimeOfDay()}});
+        if (res.success) {
+          const mood = res.data.mood_analysis.primary_mood;
+          const conf = res.data.mood_analysis.confidence || 0;
+          if (mood === 'unknown' || conf <= 0.1) {
+            bitaSay("I didn't quite catch your mood! Try saying 'I feel happy', 'stressed', 'tired', or ask me to 'open cart'!");
+            return;
+          }
+          currentMood = mood;
+          localStorage.setItem('mb_mood', mood);
+          const emoji = res.data.mood_analysis.emoji;
+          bitaSay(`Detected: ${mood} ${emoji} — showing recommendations!`);
+          const labelEl = document.getElementById('home-mood-label');
+          if (labelEl) labelEl.textContent = mood.charAt(0).toUpperCase()+mood.slice(1);
+          loadHomeRecs();
+          switchView('recommendations');
+        }
+      } else {
+        toast(`Heard: "${text}"`);
+      }
+    } catch(err) { toast('Could not analyze. Try speaking again.', 'error'); }
+  };
+  
+  continuousRecognition.onerror = (err) => {
+    console.warn("[ContinuousVoice] Error:", err);
+  };
+  
+  continuousRecognition.onend = () => {
+    const currentView = document.querySelector('.view.active')?.id;
+    if (isContinuousListening && (currentView === 'home-view' || currentView === 'mood-selection-view')) {
+      try { continuousRecognition.start(); } catch(e) {}
+    } else {
+      micBtns.forEach(btn => btn.classList.remove('recording'));
+      isContinuousListening = false;
+    }
+  };
+  
+  try {
+    continuousRecognition.start();
+    isContinuousListening = true;
+    toast("AI Waiter is listening continuously 🎙️", "info");
+  } catch(e) {
+    console.error("[ContinuousVoice] Start error:", e);
+  }
 }
 
 function getTimeOfDay() {
@@ -647,6 +950,259 @@ function getTimeOfDay() {
   if (h < 21) return 'evening';
   return 'night';
 }
+
+// ── Live Voice Waiter (Gemini Live API WebSocket Stream) ──────────────────────
+let liveWs = null;
+let liveAudioCtx = null;
+let liveMediaStream = null;
+let liveProcessor = null;
+let liveAudioQueue = [];
+let isLivePlaying = false;
+let livePlayCtx = null;
+
+function showCallUI(show) {
+  const modal = document.getElementById('live-call-modal');
+  if (!modal) return;
+  modal.style.display = show ? 'flex' : 'none';
+}
+
+function updateCallStatus(text) {
+  const el = document.getElementById('live-call-status');
+  if (el) el.textContent = text;
+}
+
+function updateCallTranscript(text) {
+  const el = document.getElementById('live-call-transcript');
+  if (el) el.textContent = `"${text}"`;
+}
+
+let isMockSession = false;
+let callRecognition = null;
+
+function speakTextLocal(text) {
+  if ('speechSynthesis' in window) {
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      const engVoice = voices.find(v => v.lang.startsWith('en'));
+      if (engVoice) utterance.voice = engVoice;
+      utterance.rate = 0.95;
+      window.speechSynthesis.speak(utterance);
+    } catch(e) {
+      console.error("Local TTS Error:", e);
+    }
+  }
+}
+
+function startLocalSpeechForCall() {
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  callRecognition = new SR();
+  callRecognition.lang = 'en-IN';
+  callRecognition.continuous = true;
+  callRecognition.interimResults = false;
+  
+  callRecognition.onresult = (e) => {
+    const text = e.results[e.results.length - 1][0].transcript.trim();
+    if (text) {
+      console.log("[CallRecognition] Heard:", text);
+      const userTranscript = document.getElementById('live-call-transcript');
+      if (userTranscript) userTranscript.textContent = `You: "${text}"`;
+      
+      // Parse for local voice commands
+      if (parseVoiceCommand(text)) {
+        return;
+      }
+      
+      if (liveWs && liveWs.readyState === WebSocket.OPEN) {
+        liveWs.send(JSON.stringify({ client_content: text }));
+      }
+    }
+  };
+  
+  callRecognition.onerror = (err) => {
+    console.error("[CallRecognition] Error:", err);
+  };
+  
+  callRecognition.onend = () => {
+    if (liveWs && liveWs.readyState === WebSocket.OPEN && isMockSession) {
+      try { callRecognition.start(); } catch(err) {}
+    }
+  };
+  
+  try { callRecognition.start(); } catch(err) {}
+}
+
+async function startLiveSession() {
+  isMockSession = false;
+  updateCallStatus("Connecting to Live Voice Stream…");
+  updateCallTranscript("Waiting for response…");
+  showCallUI(true);
+
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws/voice/?user_id=${(currentUser && currentUser.id) || 1}&session_id=live`;
+  
+  console.log("[LiveSession] Connecting to:", wsUrl);
+  liveWs = new WebSocket(wsUrl);
+  liveWs.binaryType = 'arraybuffer';
+
+  liveWs.onopen = async () => {
+    updateCallStatus("Connected. Initializing microphone…");
+    try {
+      liveMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+      const source = liveAudioCtx.createMediaStreamSource(liveMediaStream);
+      
+      liveProcessor = liveAudioCtx.createScriptProcessor(4096, 1, 1);
+      source.connect(liveProcessor);
+      liveProcessor.connect(liveAudioCtx.destination);
+      
+      liveProcessor.onaudioprocess = (e) => {
+        if (!liveWs || liveWs.readyState !== WebSocket.OPEN) return;
+        // Only stream raw PCM if it's not a mock session (mock session transcribes locally)
+        if (isMockSession) return;
+        const inputData = e.inputBuffer.getChannelData(0);
+        const pcmData = new Int16Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+          const val = Math.max(-1, Math.min(1, inputData[i]));
+          pcmData[i] = val < 0 ? val * 0x8000 : val * 0x7FFF;
+        }
+        liveWs.send(pcmData.buffer);
+      };
+      updateCallStatus("Listening… Talk naturally!");
+    } catch (err) {
+      console.error("[LiveSession] Microphone access error:", err);
+      updateCallStatus("Failed to access microphone");
+      toast("Could not access microphone.", "error");
+      endCall();
+    }
+  };
+
+  liveWs.onmessage = (e) => {
+    if (typeof e.data === 'string') {
+      try {
+        const payload = JSON.parse(e.data);
+        if (payload.error) {
+          toast(payload.error, "error");
+          endCall();
+          return;
+        }
+        const serverContent = payload.server_content;
+        if (serverContent) {
+          if (serverContent.is_mock) {
+            if (!isMockSession) {
+              isMockSession = true;
+              startLocalSpeechForCall();
+            }
+            if (serverContent.text) {
+              speakTextLocal(serverContent.text);
+            }
+          }
+          if (serverContent.text) {
+            console.log("[LiveSession] Text:", serverContent.text);
+            updateCallTranscript(serverContent.text);
+          } else if (serverContent.inline_data) {
+            playAudioChunk(serverContent.inline_data);
+          }
+        }
+      } catch (err) {
+        console.error("[LiveSession] Message parsing error:", err);
+      }
+    }
+  };
+
+  liveWs.onclose = () => {
+    console.log("[LiveSession] Closed");
+    endCall();
+  };
+
+  liveWs.onerror = (err) => {
+    console.error("[LiveSession] WebSocket error:", err);
+    endCall();
+  };
+}
+
+function playAudioChunk(base64Data) {
+  const binaryString = atob(base64Data);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  liveAudioQueue.push(bytes.buffer);
+  if (!isLivePlaying) {
+    playNextChunk();
+  }
+}
+
+async function playNextChunk() {
+  if (liveAudioQueue.length === 0) {
+    isLivePlaying = false;
+    return;
+  }
+  isLivePlaying = true;
+  const chunk = liveAudioQueue.shift();
+  if (!livePlayCtx) {
+    livePlayCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  try {
+    const int16View = new Int16Array(chunk);
+    const float32Data = new Float32Array(int16View.length);
+    for (let i = 0; i < int16View.length; i++) {
+      float32Data[i] = int16View[i] / 32768.0;
+    }
+    
+    const audioBuffer = livePlayCtx.createBuffer(1, float32Data.length, 24000);
+    audioBuffer.copyToChannel(float32Data, 0);
+    
+    const source = livePlayCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(livePlayCtx.destination);
+    source.onended = () => {
+      playNextChunk();
+    };
+    source.start();
+  } catch (err) {
+    console.error("[LiveSession] Playback error:", err);
+    playNextChunk();
+  }
+}
+
+function endCall() {
+  showCallUI(false);
+  isMockSession = false;
+  if ('speechSynthesis' in window) {
+    try { window.speechSynthesis.cancel(); } catch(e) {}
+  }
+  if (callRecognition) {
+    try { callRecognition.abort(); } catch(e) {}
+    callRecognition = null;
+  }
+  if (liveProcessor) {
+    try { liveProcessor.disconnect(); } catch(e) {}
+    liveProcessor = null;
+  }
+  if (liveMediaStream) {
+    try { liveMediaStream.getTracks().forEach(track => track.stop()); } catch(e) {}
+    liveMediaStream = null;
+  }
+  if (liveAudioCtx) {
+    try { liveAudioCtx.close(); } catch(e) {}
+    liveAudioCtx = null;
+  }
+  if (liveWs) {
+    if (liveWs.readyState === WebSocket.OPEN) {
+      try { liveWs.close(); } catch(e) {}
+    }
+    liveWs = null;
+  }
+  liveAudioQueue = [];
+  isLivePlaying = false;
+}
+
+// Wire up the live waiter button and end call button
+document.getElementById('live-waiter-btn')?.addEventListener('click', startLiveSession);
+document.getElementById('end-call-btn')?.addEventListener('click', endCall);
 
 // Wire all voice trigger buttons
 document.querySelectorAll('.voice-trigger').forEach(btn => {
@@ -662,6 +1218,7 @@ document.querySelectorAll('.nav-item').forEach(btn => {
 function init() {
   const splashView = document.getElementById('splash-view');
   splashView.classList.add('active');
+  cacheMenuItems();
 
   setTimeout(() => {
     const onboarded = localStorage.getItem('mb_onboarded');

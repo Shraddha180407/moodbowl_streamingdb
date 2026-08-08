@@ -48,16 +48,17 @@ def analyze_mood(text: str) -> dict:
         if s:
             scores[mood] = s
 
+    secondary = ""
     if not scores:
-        primary = 'happy'
-        scores = {'happy': 1}
+        primary = 'unknown'
+        confidence = 0.0
     else:
         primary = max(scores, key=scores.get)
-
-    sorted_moods = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-    secondary = sorted_moods[1][0] if len(sorted_moods) > 1 else ''
-    total = sum(scores.values())
-    confidence = min(0.96, 0.50 + (scores[primary] / max(total, 1)) * 0.45 + random.uniform(0, 0.05))
+        total = sum(scores.values())
+        confidence = min(0.96, 0.50 + (scores[primary] / max(total, 1)) * 0.45 + random.uniform(0, 0.05))
+        if len(scores) > 1:
+            sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+            secondary = sorted_scores[1][0]
 
     intent = 'general'
     for name, kws in INTENT_KEYWORDS.items():

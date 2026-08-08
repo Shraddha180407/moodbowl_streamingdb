@@ -291,6 +291,13 @@ body { background:var(--bg); color:var(--text); }
 .mood-flash-overlay { position:fixed; inset:0; pointer-events:none; z-index:300; opacity:0; transition:opacity .4s; }
 .mood-flash-overlay.flash { opacity:.3; }
 
+
+@keyframes livePulse {
+  0% { transform: scale(0.95); opacity: 0.5; }
+  50% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.5; }
+}
+
 /* ── Responsive desktop preview ── */
 @media(min-width:431px) {
   body { background:#f5f0f5; display:flex; align-items:center; justify-content:center; }

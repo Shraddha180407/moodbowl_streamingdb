@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>MoodBite — Eat What You Feel</title>
+<title>MoodBowl — Eat What You Feel</title>
 <link rel="stylesheet" href="/static/css/app.css">
 <meta name="theme-color" content="#FF8FAB">
 </head>
@@ -15,7 +15,7 @@
 
   <!-- ── Splash ── -->
   <div id="splash-view" class="view">
-    <h1>MoodBite</h1>
+    <h1>MoodBowl</h1>
     <p>Eat What You Feel</p>
     <div class="loading-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
   </div>
@@ -60,7 +60,7 @@
   <!-- ── Login ── -->
   <div id="login-view" class="view">
     <div class="login-header">
-      <h2>MoodBite</h2>
+      <h2>MoodBowl</h2>
       <p>Welcome back!</p>
     </div>
     <div class="login-form">
@@ -82,7 +82,7 @@
       <button class="primary-btn wide" onclick="performAuth('login')">Login</button>
       <div class="divider">or</div>
       <button class="outline-btn wide" onclick="performAuth('register')">Create Account</button>
-      <button class="ghost-btn wide" onclick="switchView('mood-selection')">Continue as Guest</button>
+      <button class="ghost-btn wide" onclick="loginAsGuest()">Continue as Guest</button>
       <p style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:8px">Demo: user1@moodbite.demo / demo1234</p>
     </div>
   </div>
@@ -154,6 +154,13 @@
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
       </button>
       <p>Tap to speak your craving</p>
+      
+      <div style="margin-top: 15px;">
+        <button id="live-waiter-btn" class="secondary-btn" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; color: white; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; outline: none;">
+          <span style="display:inline-block; width: 8px; height: 8px; background: #22c55e; border-radius: 50%; animation: livePulse 1.5s infinite;"></span>
+          Connect Live AI Assistant
+        </button>
+      </div>
     </div>
     <div class="view-all-section">
       <h4>What's your vibe?</h4>
@@ -344,6 +351,29 @@
   </div>
 
 </div><!-- /app-container -->
+
+<!-- Live Voice Call Overlay -->
+<div id="live-call-modal" class="view" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:radial-gradient(circle, #1e1b4b 0%, #030712 100%); z-index:9999; flex-direction:column; align-items:center; justify-content:space-between; padding: 40px 20px; box-sizing:border-box; color:white;">
+  <div style="text-align:center;">
+    <h3 style="margin-top:20px; font-size:24px; font-family:'Outfit',sans-serif; font-weight:700;">Bito Live Waiter</h3>
+    <p id="live-call-status" style="color:#a5f3fc; font-size:14px; margin-top:5px; font-family:'Outfit',sans-serif;">Connecting to Live Voice Stream…</p>
+  </div>
+  
+  <div style="position:relative; width:180px; height:180px; display:flex; align-items:center; justify-content:center;">
+    <div style="animation: livePulse 1.8s infinite; background:rgba(6, 182, 212, 0.15); width:150px; height:150px; border-radius:50%; position:absolute;"></div>
+    <div style="width:100px; height:100px; border-radius:50%; background:linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); display:flex; align-items:center; justify-content:center; font-size:40px; box-shadow:0 0 30px rgba(6,182,212,0.4); z-index:2;">
+      🤖
+    </div>
+  </div>
+  
+  <div style="width:100%; max-width:400px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:20px; min-height:100px; max-height:150px; overflow-y:auto; box-sizing:border-box; backdrop-filter:blur(10px);">
+    <p id="live-call-transcript" style="font-size:15px; color:#e2e8f0; line-height:1.5; text-align:center; font-style:italic; font-family:'Outfit',sans-serif; margin:0;">"Press connect to start live voice chat with Bito..."</p>
+  </div>
+  
+  <button id="end-call-btn" style="background:#ef4444; border:none; padding:15px 40px; border-radius:30px; color:white; font-size:16px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:8px; box-shadow:0 10px 20px rgba(239,68,68,0.3); transition:all 0.2s; font-family:'Outfit',sans-serif; outline:none;">
+    Disconnect
+  </button>
+</div>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>

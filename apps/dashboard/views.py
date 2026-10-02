@@ -12,7 +12,39 @@ from apps.recommendations.engine import engine
 
 
 def serve_dashboard(request):
-    return render(request, 'dashboard.html')
+    """
+    Admin-only analytics dashboard.
+    Non-admin requests are redirected to the app with an access-denied flag.
+    Accepts JWT via Authorization header OR ?token= query param (for new-tab links).
+    """
+    from django.http import HttpResponseRedirect
+    from rest_framework_simplejwt.authentication import JWTAuthentication
+    from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
+    from rest_framework.exceptions import AuthenticationFailed
+
+    # 1. Check Django session auth (staff via /admin/ login)
+    if request.user.is_authenticated and request.user.is_staff:
+        return render(request, 'dashboard.html')
+
+    # 2. If token passed as query param, inject it into the request meta
+    #    so JWTAuthentication can pick it up.
+    token_param = request.GET.get('token', '').strip()
+    if token_param:
+        request.META['HTTP_AUTHORIZATION'] = f'Bearer {token_param}'
+
+    # 3. Validate JWT Bearer token
+    try:
+        jwt_auth = JWTAuthentication()
+        user_auth_tuple = jwt_auth.authenticate(request)
+        if user_auth_tuple is not None:
+            user, _ = user_auth_tuple
+            if user.is_staff:
+                return render(request, 'dashboard.html')
+    except (AuthenticationFailed, TokenError, InvalidToken, Exception):
+        pass
+
+    # 4. Not an admin — redirect to the app with a denied flag
+    return HttpResponseRedirect('/app/?dashboard_denied=1')
 
 
 def dashboard_stats(request):

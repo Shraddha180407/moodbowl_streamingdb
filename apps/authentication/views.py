@@ -40,7 +40,8 @@ class RegisterView(APIView):
         )
         UserPreference.objects.create(user=user)
         return Response({"success": True, "message": "User registered successfully",
-            "data": {"user_id": user.id, "email": user.email, "name": user.name, "phone": user.phone},
+            "data": {"user_id": user.id, "email": user.email, "name": user.name,
+                     "phone": user.phone, "is_staff": user.is_staff},
             "token": get_tokens(user)}, status=201)
 
 class LoginView(APIView):
@@ -51,7 +52,8 @@ class LoginView(APIView):
             return err("Invalid credentials", "INVALID_CREDENTIALS", 401)
         return Response({"success": True, "message": "Login successful",
             "data": {"user_id": user.id, "email": user.email, "name": user.name,
-                     "phone": user.phone, "profile_image": user.profile_image},
+                     "phone": user.phone, "profile_image": user.profile_image,
+                     "is_staff": user.is_staff},
             "token": get_tokens(user)})
 
 class LogoutView(APIView):

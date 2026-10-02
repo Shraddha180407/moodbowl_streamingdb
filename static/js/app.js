@@ -18,6 +18,10 @@ let cartItems    = [];
 let selectedRating = 0;
 let currentOrderId = null;
 
+// Returns true only when the logged-in user has staff/admin privileges
+function isAdmin() { return !!(currentUser && currentUser.is_staff); }
+
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 async function api(method, path, body, isForm=false) {
   const opts = { method, headers: {} };
@@ -161,6 +165,7 @@ let hasAutoGreeted = false;
 function onViewEnter(view) {
   if (view === 'home') {
     loadHomeRecs();
+    renderAdminDashboardButton();   // show/hide the ⚙️ Live Dashboard button
     if (!hasAutoGreeted) {
       hasAutoGreeted = true;
       setTimeout(autoGreetAndListen, 500);
@@ -244,6 +249,69 @@ function logout() {
   localStorage.removeItem('mb_user');
   toast('Logged out');
   switchView('login');
+}
+
+// ── Admin-only Dashboard Button ───────────────────────────────────────────────
+/**
+ * Injects (or removes) the "Live Dashboard" button in the home view.
+ * Visible ONLY when the logged-in user has is_staff === true.
+ * The button opens /dashboard/ in a new tab.
+ */
+function renderAdminDashboardButton() {
+  // Remove any existing admin button first to avoid duplicates
+  const existing = document.getElementById('admin-dashboard-btn');
+  if (existing) existing.remove();
+
+  if (!isAdmin()) return;   // ← nothing to show for non-admins
+
+  // Build button element
+  const btn = document.createElement('div');
+  btn.id = 'admin-dashboard-btn';
+  btn.style.cssText = 'margin-top: 14px; display: flex; justify-content: center;';
+  btn.innerHTML = `
+    <button
+      onclick="openAdminDashboard()"
+      style="
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: linear-gradient(135deg, #f97316 0%, #a855f7 100%);
+        border: none;
+        padding: 10px 22px;
+        border-radius: 24px;
+        color: white;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 4px 18px rgba(249,115,22,0.40);
+        transition: transform 0.18s, box-shadow 0.18s;
+        outline: none;
+        letter-spacing: 0.3px;
+      "
+      onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 24px rgba(249,115,22,0.55)'"
+      onmouseout="this.style.transform='';this.style.boxShadow='0 4px 18px rgba(249,115,22,0.40)'"
+      title="Admin only — opens the live analytics dashboard"
+    >
+      <span style="display:inline-block;width:8px;height:8px;background:#4ade80;border-radius:50%;animation:livePulse 1.5s infinite;flex-shrink:0;"></span>
+      ⚙️ Live Dashboard
+    </button>`;
+
+  // Insert it inside the main-mic-section, after the live-waiter button wrapper
+  const micSection = document.querySelector('.main-mic-section');
+  if (micSection) {
+    micSection.appendChild(btn);
+  }
+}
+
+function openAdminDashboard() {
+  if (!isAdmin()) {
+    toast('Access denied — admin only 🔒', 'error');
+    return;
+  }
+  // Pass the JWT in a query param so Django can verify admin status
+  // (The dashboard view checks Bearer token via SimpleJWT)
+  const url = `/dashboard/?token=${encodeURIComponent(authToken || '')}`;
+  window.open(url, '_blank');
 }
 
 // ── Mood selection ────────────────────────────────────────────────────────────
@@ -1219,6 +1287,12 @@ function init() {
   const splashView = document.getElementById('splash-view');
   splashView.classList.add('active');
   cacheMenuItems();
+
+  // Show a toast if we were redirected after a failed dashboard access attempt
+  if (new URLSearchParams(window.location.search).get('dashboard_denied') === '1') {
+    setTimeout(() => toast('Dashboard is admin-only 🔒', 'error'), 2200);
+    history.replaceState(null, '', '/app/'); // clean up the URL
+  }
 
   setTimeout(() => {
     const onboarded = localStorage.getItem('mb_onboarded');

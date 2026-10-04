@@ -30,12 +30,14 @@ class RegisterView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
         data = request.data
-        if not data.get('email') or not data.get('password'):
+        email = (data.get('email') or '').strip().lower()
+        password = data.get('password') or ''
+        if not email or not password:
             return err("Email and password are required", "VALIDATION_ERROR", 422)
-        if User.objects.filter(email=data['email']).exists():
+        if User.objects.filter(email__iexact=email).exists():
             return err("Email already exists", "EMAIL_EXISTS", 400)
         user = User.objects.create_user(
-            email=data['email'], password=data['password'],
+            email=email, password=password,
             name=data.get('name', ''), phone=data.get('phone', '')
         )
         UserPreference.objects.create(user=user)
@@ -47,7 +49,9 @@ class RegisterView(APIView):
 class LoginView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
-        user = authenticate(email=request.data.get('email', ''), password=request.data.get('password', ''))
+        email = (request.data.get('email') or '').strip().lower()
+        password = request.data.get('password') or ''
+        user = authenticate(email=email, password=password)
         if not user:
             return err("Invalid credentials", "INVALID_CREDENTIALS", 401)
         return Response({"success": True, "message": "Login successful",

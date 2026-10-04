@@ -5,7 +5,7 @@ class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError('Email is required')
-        email = self.normalize_email(email)
+        email = self.normalize_email(email).lower().strip()
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
@@ -15,6 +15,9 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         return self.create_user(email, password, **extra_fields)
+
+    def get_by_natural_key(self, username):
+        return self.get(**{f"{self.model.USERNAME_FIELD}__iexact": username.strip()})
 
 class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)

@@ -186,7 +186,7 @@ function onViewEnter(view) {
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 async function performAuth(mode) {
-  const email = document.getElementById('login-email').value.trim();
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
   const pwd   = document.getElementById('login-password').value;
   const errEl = document.getElementById('auth-error');
   errEl.classList.remove('show');

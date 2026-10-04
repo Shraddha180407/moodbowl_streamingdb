@@ -5,7 +5,7 @@ from apps.users.models import User, UserPreference
 from apps.orders.models import Order, OrderItem, OrderStatusHistory, OrderRating
 from apps.cart.models import Cart
 from apps.recommendations.engine import engine
-import random, uuid
+import os, random, uuid
 from datetime import timedelta
 from django.utils import timezone
 
@@ -204,6 +204,27 @@ class Command(BaseCommand):
                 Cart.objects.get_or_create(user=user)
             users.append(user)
         self.stdout.write(f"  ✅ {len(users)} demo users")
+
+        # Superuser / Admin accounts
+        admin_accounts = [
+            ("shraddhag679@gmail.com", "Shraddha"),
+            ("admin@moodbite.com", "Admin"),
+        ]
+        admin_password = os.environ.get('ADMIN_PASSWORD', 'shraddha')
+        for admin_email, admin_name in admin_accounts:
+            admin_user, _ = User.objects.get_or_create(
+                email=admin_email,
+                defaults={'name': admin_name}
+            )
+            admin_user.name = admin_name
+            admin_user.is_staff = True
+            admin_user.is_superuser = True
+            admin_user.is_active = True
+            admin_user.set_password(admin_password)
+            admin_user.save()
+            UserPreference.objects.get_or_create(user=admin_user)
+            Cart.objects.get_or_create(user=admin_user)
+        self.stdout.write(f"  ✅ Admin accounts verified: shraddhag679@gmail.com, admin@moodbite.com")
 
         # Synthetic orders spread over last 60 days
         MOOD_IDS = [m['mood_id'] for m in MOODS]
